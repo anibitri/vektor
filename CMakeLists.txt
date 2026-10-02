@@ -32,6 +32,10 @@ add_library(vektor_core STATIC src/core/index.cpp)
 target_include_directories(vektor_core PUBLIC src)
 target_compile_options(vektor_core PRIVATE ${VEKTOR_WARNINGS})
 
+add_executable(vektor-bench src/bench/main.cpp src/bench/dataset.cpp)
+target_link_libraries(vektor-bench PRIVATE vektor_core)
+target_compile_options(vektor-bench PRIVATE ${VEKTOR_WARNINGS})
+
 if(VEKTOR_TESTS)
   include(FetchContent)
   FetchContent_Declare(googletest
@@ -45,7 +49,9 @@ if(VEKTOR_TESTS)
   enable_testing()
   add_executable(vektor_tests
     tests/distance_test.cpp
-    tests/index_test.cpp)
+    tests/index_test.cpp
+    tests/dataset_test.cpp
+    src/bench/dataset.cpp)
   target_link_libraries(vektor_tests PRIVATE vektor_core GTest::gtest_main)
   target_compile_options(vektor_tests PRIVATE ${VEKTOR_WARNINGS})
   add_test(NAME vektor_tests COMMAND vektor_tests)
