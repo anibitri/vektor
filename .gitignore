@@ -1,0 +1,15 @@
+# Private: spec and assistant notes
+project-2-vektor.md
+CLAUDE.md
+
+# Secrets
+.env
+
+# Build output
+build/
+build-*/
+
+# Datasets and index files (large; recreated by scripts)
+data/
+*.vkd
+*.vkt
