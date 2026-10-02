@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Ubuntu 26.04 runners ship GCC 14 and Clang 21 (the same major version as local development).
+jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: find src tests -name '*.cpp' -o -name '*.hpp' | xargs clang-format-21 --dry-run --Werror
+
+  test:
+    name: Release build and tests (${{ matrix.cxx }})
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [g++-14, clang++-21]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+      - run: cmake --build build -j
+      - run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    name: Debug build and tests under ASan + UBSan
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DVEKTOR_SANITIZE=ON -DCMAKE_CXX_COMPILER=clang++-21
+      - run: cmake --build build -j
+      - run: ctest --test-dir build --output-on-failure
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cmake -B build -DCMAKE_CXX_COMPILER=clang++-21
+      - run: find src tests -name '*.cpp' | xargs clang-tidy-21 -p build --quiet
