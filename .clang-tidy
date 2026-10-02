@@ -1,0 +1,17 @@
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cppcoreguidelines-no-malloc,
+  cppcoreguidelines-owning-memory,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  readability-*,
+  -readability-identifier-length,
+  -readability-magic-numbers
+CheckOptions:
+  # GoogleTest macros expand to many branches; count only the code we wrote.
+  readability-function-cognitive-complexity.IgnoreMacros: true
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/src/.*'
