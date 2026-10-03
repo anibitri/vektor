@@ -7,15 +7,29 @@ closest stored vectors, either exactly (brute force) or approximately with HNSW,
 algorithm implemented here from scratch. The plan is to benchmark it on standard datasets, serve
 it over a REST API, and use it to power a small RAG (retrieval-augmented generation) app.
 
-**Status: early work in progress.** Done so far: exact search, the benchmark dataset format and
-the SIFT-100k dataset. Next: HNSW, then the REST server, the RAG app and the UI.
+**Status: work in progress.** Done so far: exact search, HNSW, the benchmark tool and the first
+benchmarks on SIFT-100k. Next: saving and loading the index, then the REST server, the RAG app
+and the UI.
+
+## Results so far
+
+On SIFT-100k (100,000 vectors, 128 dimensions), HNSW with `M = 16` finds **96.7% of the true 10
+nearest neighbours at 15,972 queries per second, 17.8× faster than exact search** (896
+queries/s).
+The index takes 697 bytes per vector: 512 for the vector and 185 for the graph.
+
+![Recall vs queries per second](docs/figures/recall_vs_qps.png)
+
+Measured on an Apple M2 (8 GB RAM, macOS 26.6.2, Apple clang 21), one thread, mean of 3 runs.
+Method, more charts and discussion: [docs/benchmarks.md](docs/benchmarks.md). How the HNSW code
+maps to the paper: [docs/hnsw.md](docs/hnsw.md).
 
 ## Things to change
 
 A temporary checklist of things only you can do. Delete this section when it's done.
 
-- [ ] Create the GitHub repo `anibitri/vektor` and push. CI has not run yet, so check that the
-      first run passes.
+- [x] Create the GitHub repo `anibitri/vektor` and push. (Done on 2026-10-03 with your
+      approval; CI passes.)
 
 ## Build and test
 
@@ -26,9 +40,12 @@ nothing else to install.
 make build       # Release build, tuned for this CPU (-march=native)
 make test        # run the tests
 make test-asan   # run the tests under AddressSanitizer + UndefinedBehaviorSanitizer
+make datasets    # download and convert the benchmark datasets (see below)
+make bench       # run all benchmarks and write results/*.csv (about 7 minutes)
+make plots       # draw the charts in docs/figures/ (sets up a Python venv in .venv/)
 make format      # format the code with clang-format
 make lint        # check the code with clang-tidy
-make clean       # delete build files and downloaded datasets
+make clean       # delete build files, downloaded datasets and the Python venv
 ```
 
 CI runs on every push: formatting, clang-tidy, Release builds with GCC 14 and Clang 21, and a
@@ -52,13 +69,13 @@ to recompute them. The layout, all little-endian:
 [float32 base vectors][float32 query vectors][u32 true neighbours, gt_k per query]
 ```
 
-To measure exact search on a dataset:
+To measure exact search and HNSW on a dataset (run `build/vektor-bench` to see all options):
 
 ```bash
-build/vektor-bench run --data data/sift-100k.vkd
+build/vektor-bench run --data data/sift-100k.vkd --M 8,16,32 --ef-search 10,40,160
 ```
 
-## How it works so far
+## How it works
 
 - **Storage.** All vectors live in one flat `std::vector<float>`; row `i` is values
   `i * dim` to `(i + 1) * dim`. That is exactly `4 × dim` bytes per vector, with nothing in
@@ -74,6 +91,10 @@ build/vektor-bench run --data data/sift-100k.vkd
   scalar `fadd` instructions per 16 values; with it, four vector `fmla.4s` instructions.
 - **Exact search** computes the distance to every vector and keeps the best `k` in a max-heap,
   so the worst of the current best is always on top, ready to be replaced.
+- **HNSW** links every vector to some of its nearest neighbours, in a stack of graph layers that
+  get sparser towards the top. A search crosses the space in a few long hops on the upper
+  layers, then searches carefully on the bottom layer. [docs/hnsw.md](docs/hnsw.md) maps each
+  algorithm in the paper to the code.
 
 ## Licence
 
