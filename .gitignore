@@ -9,6 +9,9 @@ CLAUDE.md
 build/
 build-*/
 
+# Python venv for the plots
+.venv/
+
 # Datasets and index files (large; recreated by scripts)
 data/
 *.vkd

@@ -2,7 +2,7 @@
 
 SOURCES := $(shell find src tests -name '*.cpp' -o -name '*.hpp')
 
-.PHONY: build test test-asan datasets bench format lint clean
+.PHONY: build test test-asan datasets bench plots format lint clean
 
 # Results record the commit they were measured on; "-modified" means the
 # measured code (src/, CMakeLists.txt) had uncommitted changes.
@@ -33,6 +33,15 @@ bench: build
 	$(BENCH) --select simple,heuristic --out results/sift-100k-select.csv
 	$(BENCH) --visited tags,hash --out results/sift-100k-visited.csv
 
+# Draws the charts in docs/figures/ from results/, using a local Python venv.
+plots: .venv
+	.venv/bin/python scripts/plots.py
+
+.venv: scripts/requirements.txt
+	python3 -m venv .venv
+	.venv/bin/pip install -q -r scripts/requirements.txt
+	touch .venv
+
 format:
 	clang-format -i $(SOURCES)
 
@@ -40,6 +49,6 @@ format:
 lint: build
 	SDKROOT=$$(xcrun --show-sdk-path 2>/dev/null) clang-tidy -p build --quiet $(filter %.cpp,$(SOURCES))
 
-# Deletes build files and downloaded datasets.
+# Deletes build files, downloaded datasets and the Python venv.
 clean:
-	rm -rf build build-asan data
+	rm -rf build build-asan data .venv
