@@ -94,10 +94,12 @@ Dataset make_dataset(Vectors base, Vectors queries, Metric metric, std::uint32_t
     if (gt_k == 0 || gt_k > kMaxGtK) {
         throw std::invalid_argument("gt_k must be between 1 and " + std::to_string(kMaxGtK));
     }
-    Index index(base.dim, metric);
-    index.reserve(base.rows());
+    // Checked (and for cosine, normalised) copy of the base vectors to search.
+    std::vector<float> rows;
+    rows.reserve(base.data.size());
     for (std::size_t i = 0; i < base.rows(); ++i) {
-        index.add(base.row(i));
+        const std::vector<float> v = prepare_vector(base.row(i), base.dim, metric);
+        rows.insert(rows.end(), v.begin(), v.end());
     }
 
     Dataset ds;
@@ -107,7 +109,8 @@ Dataset make_dataset(Vectors base, Vectors queries, Metric metric, std::uint32_t
     ds.queries = std::move(queries);
     ds.ground_truth.reserve(ds.queries.rows() * ds.gt_k);
     for (std::size_t q = 0; q < ds.queries.rows(); ++q) {
-        for (const Result& r : index.search_exact(ds.queries.row(q), ds.gt_k)) {
+        const std::vector<float> query = prepare_vector(ds.queries.row(q), ds.base.dim, metric);
+        for (const Result& r : brute_force(rows, ds.base.dim, metric, query, ds.gt_k)) {
             ds.ground_truth.push_back(r.row);
         }
     }

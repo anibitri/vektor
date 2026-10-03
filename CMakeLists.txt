@@ -28,7 +28,7 @@ endif()
 # Strict warnings for our own code only (not third-party code).
 set(VEKTOR_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 
-add_library(vektor_core STATIC src/core/index.cpp)
+add_library(vektor_core STATIC src/core/index.cpp src/core/hnsw.cpp)
 target_include_directories(vektor_core PUBLIC src)
 target_compile_options(vektor_core PRIVATE ${VEKTOR_WARNINGS})
 
@@ -50,6 +50,7 @@ if(VEKTOR_TESTS)
   add_executable(vektor_tests
     tests/distance_test.cpp
     tests/index_test.cpp
+    tests/hnsw_test.cpp
     tests/dataset_test.cpp
     src/bench/dataset.cpp)
   target_link_libraries(vektor_tests PRIVATE vektor_core GTest::gtest_main)
