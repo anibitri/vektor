@@ -2,7 +2,12 @@
 
 SOURCES := $(shell find src tests -name '*.cpp' -o -name '*.hpp')
 
-.PHONY: build test test-asan datasets format lint clean
+.PHONY: build test test-asan datasets bench format lint clean
+
+# Results record the commit they were measured on; "-modified" means the
+# measured code (src/, CMakeLists.txt) had uncommitted changes.
+COMMIT = $(shell git rev-parse --short HEAD)$(shell test -z "$$(git status --porcelain -- src CMakeLists.txt)" || echo -modified)
+BENCH = build/vektor-bench run --data data/sift-100k.vkd --runs 3 --commit $(COMMIT)
 
 # Release build tuned for this machine's CPU. CI and Docker build without -march=native.
 build:
@@ -20,6 +25,13 @@ test-asan:
 
 datasets: build
 	scripts/download_datasets.sh
+
+# Regenerates every file in results/. Run `make datasets` first.
+bench: build
+	mkdir -p results
+	$(BENCH) --M 8,16,32 --out results/sift-100k.csv
+	$(BENCH) --select simple,heuristic --out results/sift-100k-select.csv
+	$(BENCH) --visited tags,hash --out results/sift-100k-visited.csv
 
 format:
 	clang-format -i $(SOURCES)

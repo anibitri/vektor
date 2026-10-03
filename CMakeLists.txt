@@ -35,6 +35,12 @@ target_compile_options(vektor_core PRIVATE ${VEKTOR_WARNINGS})
 add_executable(vektor-bench src/bench/main.cpp src/bench/dataset.cpp)
 target_link_libraries(vektor-bench PRIVATE vektor_core)
 target_compile_options(vektor-bench PRIVATE ${VEKTOR_WARNINGS})
+# The compiler flags, written into every benchmark results file.
+string(TOUPPER "${CMAKE_BUILD_TYPE}" build_type)
+get_directory_property(global_options COMPILE_OPTIONS)
+list(JOIN global_options " " global_options)
+target_compile_definitions(vektor-bench PRIVATE
+  VEKTOR_FLAGS="${CMAKE_BUILD_TYPE}: ${CMAKE_CXX_FLAGS_${build_type}} ${global_options}")
 
 if(VEKTOR_TESTS)
   include(FetchContent)
