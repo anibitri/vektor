@@ -66,5 +66,6 @@ in a `thread_local`, so searches on different threads never share one.
 ## Thread safety
 
 `search` and `search_exact` only read the index, so many can run at once. `add` changes it, so
-it must not run at the same time as anything else. The REST server (coming later) will enforce
-this with a `std::shared_mutex`.
+it must not run at the same time as anything else. The REST server enforces this with a
+`std::shared_mutex`: searches take a shared lock, adds take a unique lock. Finer-grained locking
+(per node, as hnswlib does) would let adds run alongside searches; that is future work.

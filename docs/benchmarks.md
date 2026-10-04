@@ -119,6 +119,27 @@ Both versions return exactly the same results; a test checks this.
   process peaked at 129 MB resident memory for M = 16, including the loaded dataset (measured
   once with `/usr/bin/time -l` at commit 8384f58).
 
+## Save and load
+
+Each SIFT-100k index saved to a `.vkt` file, loaded back, and checked: the loaded index returned
+exactly the same results for all 1,000 queries. One run each (no repeats), at commit 61597b4,
+measured with:
+
+```bash
+build/vektor-bench run --data data/sift-100k.vkd --M 8,16,32 --ef-search 40 --save /tmp/sift.vkt
+```
+
+| M | file size | in memory | save | load |
+| ---: | ---: | ---: | ---: | ---: |
+| 8 | 56.7 MB | 63.6 MB | 0.19 s | 0.16 s |
+| 16 | 59.7 MB | 69.8 MB | 0.25 s | 0.16 s |
+| 32 | 61.8 MB | 82.5 MB | 0.26 s | 0.17 s |
+
+The file is 11% (M = 8) to 25% (M = 32) smaller than the index in memory. The file stores only
+the links that exist; in memory, each link list also keeps room for `M_max0 + 1` links (or
+`M + 1` on upper layers) and a 24-byte `std::vector` header. The time includes computing the
+CRC-32 checksum, one byte at a time.
+
 ## Limitations
 
 - One dataset so far. GloVe, Fashion-MNIST, synthetic data and the intrinsic-dimension

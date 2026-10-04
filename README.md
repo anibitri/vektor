@@ -7,9 +7,9 @@ closest stored vectors, either exactly (brute force) or approximately with HNSW,
 algorithm implemented here from scratch. The plan is to benchmark it on standard datasets, serve
 it over a REST API, and use it to power a small RAG (retrieval-augmented generation) app.
 
-**Status: work in progress.** Done so far: exact search, HNSW, the benchmark tool and the first
-benchmarks on SIFT-100k. Next: saving and loading the index, then the REST server, the RAG app
-and the UI.
+**Status: work in progress.** Done so far: exact search, HNSW, benchmarks on SIFT-100k, saving
+and loading the index, the REST API, the RAG endpoints (with Ollama) and the Docker image. Next:
+more datasets and the intrinsic-dimension experiment, the RAG evaluation, and the UI.
 
 ## Results so far
 
@@ -33,23 +33,27 @@ A temporary checklist of things only you can do. Delete this section when it's d
 
 ## Build and test
 
-You need CMake 3.20 or newer and a C++20 compiler. GoogleTest is downloaded by CMake, so there is
+You need CMake 3.20 or newer and a C++20 compiler. CMake downloads the three libraries
+(GoogleTest, nlohmann/json and cpp-httplib, each pinned by version and checksum), so there is
 nothing else to install.
 
 ```bash
 make build       # Release build, tuned for this CPU (-march=native)
 make test        # run the tests
 make test-asan   # run the tests under AddressSanitizer + UndefinedBehaviorSanitizer
+make test-tsan   # run the tests under ThreadSanitizer
 make datasets    # download and convert the benchmark datasets (see below)
 make bench       # run all benchmarks and write results/*.csv (about 7 minutes)
 make plots       # draw the charts in docs/figures/ (sets up a Python venv in .venv/)
+make up          # build the Docker image and run the server on http://localhost:8080
 make format      # format the code with clang-format
 make lint        # check the code with clang-tidy
-make clean       # delete build files, downloaded datasets and the Python venv
+make clean       # delete build files, datasets, index files and the Python venv
 ```
 
-CI runs on every push: formatting, clang-tidy, Release builds with GCC 14 and Clang 21, and a
-Debug build with AddressSanitizer + UndefinedBehaviorSanitizer.
+CI runs on every push: formatting, clang-tidy, Release builds with GCC 14 and Clang 21, Debug
+builds under AddressSanitizer + UndefinedBehaviorSanitizer and under ThreadSanitizer, and a
+Docker build that checks the image size and that the server starts.
 
 ## Datasets
 
@@ -75,6 +79,78 @@ To measure exact search and HNSW on a dataset (run `build/vektor-bench` to see a
 build/vektor-bench run --data data/sift-100k.vkd --M 8,16,32 --ef-search 10,40,160
 ```
 
+## REST API
+
+`vektor-server` serves a JSON API (default `http://127.0.0.1:8080`; `--help` lists the flags).
+Index files are kept in `--data-dir` (default `data/`) and loaded again at start-up.
+
+| Method | Path | Body | Returns |
+| --- | --- | --- | --- |
+| POST | `/index` | `{dim, metric: "l2" or "cosine", M?, ef_construction?}` | the new index's stats (replaces any existing index) |
+| POST | `/vectors` | `{items: [{id, vector, metadata?}]}` | `{added, size}` |
+| POST | `/search` | `{vector, k?, ef_search?, exact?}` | `{results: [{id, distance, metadata}], took_ms}` |
+| GET | `/stats` | | size, dim, metric, params and memory, for the vector index and the RAG index |
+| POST | `/save` | | writes `index.vkt`; returns its path, file size and the time taken |
+| POST | `/rag/ingest` | `{documents: [{id, title?, text}]}` | `{documents, chunks, size, embed_ms}` |
+| POST | `/rag/search` | `{query, k?, ef_search?, exact?}` | chunks with `score` (cosine similarity), `took_ms`, `embed_ms` |
+| POST | `/rag/ask` | `{question, k?}` | `{answer, sources, timings: {embed_ms, search_ms, llm_ms}}` |
+| GET | `/health` | | `{status: "ok"}` |
+
+Defaults: `k` 10 (5 for RAG), `ef_search` 100, `exact` false. Bad input (wrong vector length,
+an empty vector, values too large for a float, `k` out of range, invalid JSON, and so on) gets
+HTTP 400 with `{"error": "..."}`; a duplicate ID gets 409. A request that would add several
+vectors adds none of them if any one is bad. Request bodies are limited to 64 MB.
+
+```bash
+build/vektor-server --port 8080
+curl -X POST localhost:8080/index -d '{"dim": 3, "metric": "cosine"}'
+curl -X POST localhost:8080/vectors -d '{"items": [{"id": "a", "vector": [1, 0, 0], "metadata": {"name": "x axis"}}]}'
+curl -X POST localhost:8080/search -d '{"vector": [0.9, 0.1, 0], "k": 1}'
+curl -X POST localhost:8080/save
+```
+
+Searches run in parallel; adding vectors waits for running searches and briefly blocks new ones
+(a `std::shared_mutex`). A test runs searches on several threads while another thread adds
+vectors, under ThreadSanitizer.
+
+## RAG with Ollama
+
+The RAG endpoints use [Ollama](https://ollama.com) running natively, for embeddings
+(`all-minilm`, 384 dimensions, 45 MB) and, optionally, answers (`qwen2.5:1.5b`, 986 MB):
+
+```bash
+brew install ollama            # or see ollama.com for Linux
+ollama serve                   # in its own terminal
+ollama pull all-minilm
+ollama pull qwen2.5:1.5b       # optional: only needed for /rag/ask
+build/vektor-server --llm-model qwen2.5:1.5b
+```
+
+Ingesting splits each document into chunks of 300 words, each repeating the last 50 words of the
+previous one, embeds them in batches of 32, and stores them in a cosine index saved to
+`data/rag.vkt`. `/rag/ask` gives the closest chunks to the LLM as numbered sources and asks it to
+answer only from them, or to say "I don't know".
+
+Without `--llm-model` the server runs in **low-space mode**: `/rag/ask` is turned off (HTTP 503)
+and only semantic search works, so only the 45 MB embedding model is needed, not the 986 MB LLM.
+
+Tested against Ollama 0.35.1 on an Apple M2 with three short hand-written documents (not a
+benchmark; the evaluation comes later): embedding a question took 6 to 9 ms, the search about
+0.005 ms, and the answer from `qwen2.5:1.5b` 0.2 to 0.8 s (7.9 s the first time, while the model
+loaded). Nearly all the time goes to the language model. The answers were correct, and the model
+said "I don't know" to a question the documents could not answer, but it did not cite the sources
+by number as the prompt asks.
+
+## Docker
+
+`make up` builds the server image and runs it on port 8080, with `data/` mounted for the index
+files and Ollama reached on the host. Add server flags with
+`make up SERVER_ARGS="--llm-model qwen2.5:1.5b"`.
+
+The image is built in `gcc:14` and runs on `distroless/base-nossl-debian13` (no shell or package
+manager, non-root user), with libstdc++ linked into the binary. It is 39.4 MB (measured on arm64),
+under the 100 MB target. Base images are pinned by digest.
+
 ## How it works
 
 - **Storage.** All vectors live in one flat `std::vector<float>`; row `i` is values
@@ -95,6 +171,11 @@ build/vektor-bench run --data data/sift-100k.vkd --M 8,16,32 --ef-search 10,40,1
   get sparser towards the top. A search crosses the space in a few long hops on the upper
   layers, then searches carefully on the bottom layer. [docs/hnsw.md](docs/hnsw.md) maps each
   algorithm in the paper to the code.
+- **Index files (`.vkt`)** hold the settings, the vectors, every node's links, and the IDs and
+  metadata, followed by a CRC-32 checksum of everything before it. Loading checks the magic
+  number, version, sizes, links and checksum, and throws a clear error if anything is wrong.
+  Saving writes a temporary file first and then renames it, so a crash never leaves a half-written
+  index behind. The exact layout is at the top of [`src/core/io.cpp`](src/core/io.cpp).
 
 ## Licence
 
