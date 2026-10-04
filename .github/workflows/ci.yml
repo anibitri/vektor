@@ -35,7 +35,18 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DVEKTOR_SANITIZE=ON -DCMAKE_CXX_COMPILER=clang++-21
+      - run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DVEKTOR_SANITIZE=address -DCMAKE_CXX_COMPILER=clang++-21
+      - run: cmake --build build -j
+      - run: ctest --test-dir build --output-on-failure
+
+  tsan:
+    name: Debug build and tests under ThreadSanitizer
+    runs-on: ubuntu-26.04
+    env:
+      TSAN_OPTIONS: halt_on_error=1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DVEKTOR_SANITIZE=thread -DCMAKE_CXX_COMPILER=clang++-21
       - run: cmake --build build -j
       - run: ctest --test-dir build --output-on-failure
 

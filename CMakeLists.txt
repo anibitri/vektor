@@ -11,7 +11,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(VEKTOR_NATIVE "Tune for this machine's CPU (-march=native). Local benchmarks only." OFF)
-option(VEKTOR_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer." OFF)
+set(VEKTOR_SANITIZE "" CACHE STRING
+  "address: AddressSanitizer + UndefinedBehaviorSanitizer; thread: ThreadSanitizer")
 option(VEKTOR_TESTS "Build the test suite." ON)
 
 # Lets `#pragma omp simd` vectorise the distance loops. No OpenMP threads.
@@ -19,10 +20,15 @@ add_compile_options(-fopenmp-simd)
 if(VEKTOR_NATIVE)
   add_compile_options(-march=native)
 endif()
-if(VEKTOR_SANITIZE)
-  # Applied to everything, including third-party code, so all code is checked the same way.
+# Sanitizers apply to everything, including third-party code, so all code is checked the same way.
+if(VEKTOR_SANITIZE STREQUAL "address")
   add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
   add_link_options(-fsanitize=address,undefined)
+elseif(VEKTOR_SANITIZE STREQUAL "thread")
+  add_compile_options(-fsanitize=thread)
+  add_link_options(-fsanitize=thread)
+elseif(VEKTOR_SANITIZE)
+  message(FATAL_ERROR "VEKTOR_SANITIZE must be address, thread or empty")
 endif()
 
 # Third-party code, pinned by version and checksum.

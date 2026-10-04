@@ -2,7 +2,7 @@
 
 SOURCES := $(shell find src tests -name '*.cpp' -o -name '*.hpp')
 
-.PHONY: build test test-asan datasets bench plots format lint clean
+.PHONY: build test test-asan test-tsan datasets bench plots format lint clean
 
 # Results record the commit they were measured on; "-modified" means the
 # measured code (src/, CMakeLists.txt) had uncommitted changes.
@@ -19,9 +19,15 @@ test: build
 
 # Debug build with AddressSanitizer and UndefinedBehaviorSanitizer, like CI.
 test-asan:
-	cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug -DVEKTOR_SANITIZE=ON
+	cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug -DVEKTOR_SANITIZE=address
 	cmake --build build-asan -j
 	ctest --test-dir build-asan --output-on-failure
+
+# Debug build with ThreadSanitizer, for the server's concurrency test.
+test-tsan:
+	cmake -B build-tsan -DCMAKE_BUILD_TYPE=Debug -DVEKTOR_SANITIZE=thread
+	cmake --build build-tsan -j
+	TSAN_OPTIONS=halt_on_error=1 ctest --test-dir build-tsan --output-on-failure
 
 datasets: build
 	scripts/download_datasets.sh
@@ -51,4 +57,4 @@ lint: build
 
 # Deletes build files, downloaded datasets and the Python venv.
 clean:
-	rm -rf build build-asan data .venv
+	rm -rf build build-asan build-tsan data .venv
