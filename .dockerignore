@@ -1,0 +1,4 @@
+# Only CMakeLists.txt and src/ are needed to build the image.
+*
+!CMakeLists.txt
+!src/

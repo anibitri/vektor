@@ -2,7 +2,7 @@
 
 SOURCES := $(shell find src tests -name '*.cpp' -o -name '*.hpp')
 
-.PHONY: build test test-asan test-tsan datasets bench plots format lint clean
+.PHONY: build test test-asan test-tsan datasets bench plots up format lint clean
 
 # Results record the commit they were measured on; "-modified" means the
 # measured code (src/, CMakeLists.txt) had uncommitted changes.
@@ -48,6 +48,15 @@ plots: .venv
 	.venv/bin/pip install -q -r scripts/requirements.txt
 	touch .venv
 
+# Builds the server's Docker image and runs it on http://localhost:8080 (Ctrl-C
+# stops it). Index files go in data/. Ollama runs natively on this machine.
+# Extra server flags: make up SERVER_ARGS="--llm-model qwen2.5:1.5b"
+up:
+	mkdir -p data
+	docker build -t vektor-server .
+	docker run --rm --name vektor -p 8080:8080 -v "$(CURDIR)/data:/data" \
+		--add-host=host.docker.internal:host-gateway vektor-server $(SERVER_ARGS)
+
 format:
 	clang-format -i $(SOURCES)
 
@@ -55,6 +64,6 @@ format:
 lint: build
 	SDKROOT=$$(xcrun --show-sdk-path 2>/dev/null) clang-tidy -p build --quiet $(filter %.cpp,$(SOURCES))
 
-# Deletes build files, downloaded datasets and the Python venv.
+# Deletes build files, downloaded datasets, index files and the Python venv.
 clean:
 	rm -rf build build-asan build-tsan data .venv

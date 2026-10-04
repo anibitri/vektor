@@ -50,6 +50,22 @@ jobs:
       - run: cmake --build build -j
       - run: ctest --test-dir build --output-on-failure
 
+  docker:
+    name: Docker image
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -t vektor-server .
+      - name: Check the image is at most 100 MB and the server starts
+        run: |
+          size=$(docker image inspect vektor-server --format '{{.Size}}')
+          echo "image size: $size bytes"
+          test "$size" -le 100000000
+          docker run -d --name vektor -p 8080:8080 vektor-server
+          for i in $(seq 1 30); do curl -sf localhost:8080/health && break; sleep 1; done
+          curl -sf localhost:8080/health
+          docker stop vektor
+
   clang-tidy:
     name: clang-tidy
     runs-on: ubuntu-26.04
