@@ -188,7 +188,7 @@ void Index::link_back(std::uint32_t from, std::uint32_t to, int layer) {
 }
 
 // INSERT (Algorithm 1).
-std::uint32_t Index::add(std::span<const float> vec) {
+std::uint32_t Index::insert(std::span<const float> vec) {
     if (size() >= std::numeric_limits<std::uint32_t>::max()) {
         throw std::length_error("index is full");
     }

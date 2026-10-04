@@ -3,8 +3,12 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <random>
 #include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "core/distance.hpp"
@@ -48,8 +52,15 @@ public:
 
     // Adds a copy of vec, links it into the HNSW graph and returns its row number.
     // Throws std::invalid_argument if vec has the wrong length, contains NaN or
-    // Inf, or is all zeros under cosine.
+    // Inf, or is all zeros under cosine. Benchmarks use this: no IDs, the row
+    // number identifies the vector.
     std::uint32_t add(std::span<const float> vec);
+
+    // Adds a vector with a string ID and metadata (any text; the server stores
+    // JSON). Also throws std::invalid_argument if the ID is already used. An
+    // index has IDs for all its vectors or for none, so mixing the two add()
+    // calls throws too.
+    std::uint32_t add(const std::string& id, std::span<const float> vec, std::string meta = {});
 
     // Reserves memory for n vectors in total, so adding them does not reallocate.
     void reserve(std::size_t n);
@@ -64,6 +75,15 @@ public:
     [[nodiscard]] std::vector<Result> search_exact(std::span<const float> query,
                                                    std::size_t k) const;
 
+    // Writes the index to a binary .vkt file (via a temporary file, so an
+    // existing file is only replaced once the new one is complete).
+    void save(const std::filesystem::path& path) const;
+
+    // Reads a .vkt file. Throws std::runtime_error with a clear message if the
+    // file is not a Vektor index, has an unknown version, or is corrupted
+    // (checked with a CRC-32 checksum).
+    static Index load(const std::filesystem::path& path);
+
     [[nodiscard]] std::size_t size() const { return vectors_.size() / dim_; }
     [[nodiscard]] std::size_t dim() const { return dim_; }
     [[nodiscard]] Metric metric() const { return metric_; }
@@ -72,6 +92,17 @@ public:
     // The stored vector (normalised if the metric is cosine).
     [[nodiscard]] std::span<const float> vector(std::uint32_t row) const {
         return {vectors_.data() + (static_cast<std::size_t>(row) * dim_), dim_};
+    }
+
+    [[nodiscard]] bool has_ids() const { return !ids_.empty(); }
+    [[nodiscard]] bool contains(const std::string& id) const { return rows_by_id_.contains(id); }
+    // The vector's ID; its row number as text if the index has no IDs.
+    [[nodiscard]] std::string id(std::uint32_t row) const {
+        return has_ids() ? ids_[row] : std::to_string(row);
+    }
+    // The vector's metadata; empty if it has none.
+    [[nodiscard]] std::string_view meta(std::uint32_t row) const {
+        return has_ids() ? std::string_view(meta_[row]) : std::string_view();
     }
 
     // Graph inspection, for tests and debugging.
@@ -85,8 +116,9 @@ public:
     [[nodiscard]] std::uint32_t entry_point() const { return entry_point_; }
     [[nodiscard]] int max_level() const { return max_level_; }
 
-    // Bytes allocated for the vectors and the graph. An estimate: the memory
-    // allocator's own bookkeeping is not counted.
+    // Bytes used by the vectors, the graph, and the IDs and metadata. An
+    // estimate: the ID lookup table and the memory allocator's own bookkeeping
+    // are not counted.
     [[nodiscard]] std::size_t memory_bytes() const;
 
 private:
@@ -97,6 +129,7 @@ private:
         auto operator<=>(const Candidate&) const = default;
     };
 
+    std::uint32_t insert(std::span<const float> vec);
     int random_level();
     [[nodiscard]] Candidate greedy_closest(std::span<const float> query, Candidate start,
                                            int layer) const;
@@ -116,6 +149,9 @@ private:
     std::uint32_t entry_point_ = 0;
     int max_level_ = -1;  // -1 while the index is empty
     std::mt19937_64 rng_;
+    std::vector<std::string> ids_;   // empty if the index has no IDs
+    std::vector<std::string> meta_;  // one per ID
+    std::unordered_map<std::string, std::uint32_t> rows_by_id_;
 };
 
 }  // namespace vektor

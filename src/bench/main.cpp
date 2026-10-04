@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <ctime>
 #include <exception>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <functional>
@@ -47,12 +48,14 @@ constexpr const char* kUsage = R"(usage:
 
   vektor-bench run --data FILE.vkd [--out FILE.csv] [--runs 1] [--k 10]
                    [--M 16] [--ef-construction 200] [--ef-search 10,20,40,80,160,320]
-                   [--select heuristic] [--visited tags] [--commit ID]
+                   [--select heuristic] [--visited tags] [--commit ID] [--save FILE.vkt]
       Measures exact search once per run, then builds an HNSW index for every
       M and --select value (M_max0 = 2 * M) and measures every --visited and
       --ef-search value. Lists are comma-separated. Run r uses seed 42 + r.
       Each measurement: one warm-up pass over all queries, then 5 timed passes;
       the pass with the median time is reported.
+      --save: also save each index to FILE.vkt, load it back, check the loaded
+      index gives the same results, and print file size and save/load times.
       --select: heuristic or simple. --visited: tags or hash.
 )";
 
@@ -208,6 +211,7 @@ struct RunOptions {
     std::vector<std::string> selects;
     std::vector<std::string> visiteds;
     std::string commit;
+    std::string save_path;
 };
 
 RunOptions parse_run_options(Flags& flags) {
@@ -222,6 +226,7 @@ RunOptions parse_run_options(Flags& flags) {
     opt.selects = flags.get_list("select", "heuristic");
     opt.visiteds = flags.get_list("visited", "tags");
     opt.commit = flags.get("commit", "unknown");
+    opt.save_path = flags.get("save", "");
     flags.check_all_used();
     for (const std::string& s : opt.selects) {
         if (s != "heuristic" && s != "simple") {
@@ -271,6 +276,30 @@ private:
     std::size_t n_base_;
 };
 
+// Saves the index, loads it back, and checks the copy finds the same results.
+void check_save_load(const vektor::Dataset& ds, const vektor::Index& index, const std::string& path,
+                     std::size_t k) {
+    auto start = Clock::now();
+    index.save(path);
+    const double save_s = seconds_since(start);
+    start = Clock::now();
+    const vektor::Index loaded = vektor::Index::load(path);
+    const double load_s = seconds_since(start);
+    for (std::size_t q = 0; q < ds.queries.rows(); ++q) {
+        const auto a = index.search(ds.queries.row(q), k, 100);
+        const auto b = loaded.search(ds.queries.row(q), k, 100);
+        if (!std::ranges::equal(a, b,
+                                [](const auto& x, const auto& y) { return x.row == y.row; })) {
+            throw std::runtime_error("the loaded index gives different results");
+        }
+    }
+    std::cout << std::format(
+        "saved {}: file {:.1f} MB, memory {:.1f} MB, save {:.2f} s, load {:.2f} s, same results "
+        "for all {} queries\n",
+        path, static_cast<double>(std::filesystem::file_size(path)) / 1e6,
+        static_cast<double>(index.memory_bytes()) / 1e6, save_s, load_s, ds.queries.rows());
+}
+
 // Builds one HNSW index and measures it for every --visited and --ef-search
 // value. Also measures exact search if with_exact is set.
 void bench_index(const vektor::Dataset& ds, const RunOptions& opt, std::uint64_t run,
@@ -291,6 +320,9 @@ void bench_index(const vektor::Dataset& ds, const RunOptions& opt, std::uint64_t
     const double build_s = seconds_since(build_start);
     std::cout << std::format("run {}: built M={} {} in {:.1f} s\n", run, m, select, build_s);
 
+    if (!opt.save_path.empty()) {
+        check_save_load(ds, index, opt.save_path, opt.k);
+    }
     const std::size_t k = opt.k;
     if (with_exact) {
         const Measurement exact =

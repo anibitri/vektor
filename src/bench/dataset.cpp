@@ -2,16 +2,14 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <fstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
-namespace vektor {
+#include "core/binary.hpp"
 
-static_assert(std::endian::native == std::endian::little,
-              "file formats assume a little-endian CPU");
+namespace vektor {
 
 namespace {
 
@@ -22,18 +20,6 @@ constexpr std::uint32_t kMaxGtK = 1U << 16U;
 
 std::runtime_error file_error(const std::filesystem::path& path, const std::string& what) {
     return std::runtime_error(path.string() + ": " + what);
-}
-
-template <typename T>
-void write_raw(std::ofstream& out, std::span<const T> values) {
-    out.write(reinterpret_cast<const char*>(values.data()),
-              static_cast<std::streamsize>(values.size_bytes()));
-}
-
-template <typename T>
-void read_raw(std::ifstream& in, std::span<T> values) {
-    in.read(reinterpret_cast<char*>(values.data()),
-            static_cast<std::streamsize>(values.size_bytes()));
 }
 
 void write_u32(std::ofstream& out, std::uint32_t value) {

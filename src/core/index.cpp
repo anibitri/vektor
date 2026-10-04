@@ -58,14 +58,41 @@ Index::Index(std::size_t dim, Metric metric, HnswParams params)
     if (dim == 0) {
         throw std::invalid_argument("dimension must be at least 1");
     }
-    if (p_.M < 2 || p_.M_max0 < p_.M || p_.ef_construction == 0) {
-        throw std::invalid_argument("HNSW needs M >= 2, M_max0 >= M and ef_construction >= 1");
+    // M_max0 is stored as a 16-bit count in .vkt files.
+    if (p_.M < 2 || p_.M_max0 < p_.M || p_.M_max0 > 65535 || p_.ef_construction == 0) {
+        throw std::invalid_argument(
+            "HNSW needs 2 <= M <= M_max0 <= 65535 and ef_construction >= 1");
     }
+}
+
+std::uint32_t Index::add(std::span<const float> vec) {
+    if (has_ids()) {
+        throw std::invalid_argument("this index has IDs: add the vector with an ID");
+    }
+    return insert(vec);
+}
+
+std::uint32_t Index::add(const std::string& id, std::span<const float> vec, std::string meta) {
+    if (size() > 0 && !has_ids()) {
+        throw std::invalid_argument("this index has no IDs: add the vector without one");
+    }
+    if (contains(id)) {
+        throw std::invalid_argument("ID '" + id + "' is already in the index");
+    }
+    const std::uint32_t row = insert(vec);  // checks the vector before changing anything
+    ids_.push_back(id);
+    meta_.push_back(std::move(meta));
+    rows_by_id_.emplace(id, row);
+    return row;
 }
 
 void Index::reserve(std::size_t n) {
     vectors_.reserve(n * dim_);
     links_.reserve(n);
+    if (has_ids()) {
+        ids_.reserve(n);
+        meta_.reserve(n);
+    }
 }
 
 std::vector<Result> Index::search_exact(std::span<const float> query, std::size_t k) const {
@@ -81,6 +108,9 @@ std::size_t Index::memory_bytes() const {
         for (const auto& list : layers) {
             bytes += list.capacity() * sizeof(std::uint32_t);
         }
+    }
+    for (std::size_t i = 0; i < ids_.size(); ++i) {
+        bytes += (2 * sizeof(std::string)) + ids_[i].size() + meta_[i].size();
     }
     return bytes;
 }
