@@ -50,7 +50,16 @@ constexpr const char* kUsage = R"(usage:
       queries are other rows of the base file (then --n-base and --n-queries
       are required).
 
-  vektor-bench run --data FILE.vkd [--out FILE.csv] [--runs 1] [--k 10]
+  vektor-bench twonn --data NAME[,NAME...] [--sample 2000] [--k 20] [--scope all|sample]
+                     [--out FILE.csv] [--commit ID]
+      Estimates intrinsic dimension with TwoNN and the Levina-Bickel MLE (k
+      neighbours), from a random sample of points. --scope all: neighbours
+      come from all the vectors; sample: only from the sample (coarser scale).
+
+  NAME is a .vkd file, or synthetic-R: 100,000 + 1,000 points generated in
+  memory with intrinsic dimension R in 128 dimensions.
+
+  vektor-bench run --data NAME [--out FILE.csv] [--runs 1] [--k 10]
                    [--M 16] [--ef-construction 200] [--ef-search 10,20,40,80,160,320]
                    [--select heuristic] [--visited tags] [--commit ID] [--save FILE.vkt]
       Measures exact search once per run, then builds an HNSW index for every
@@ -388,7 +397,7 @@ void bench_index(const vektor::Dataset& ds, const RunOptions& opt, std::uint64_t
 
 int run(Flags& flags, const std::string& command_line) {
     const RunOptions opt = parse_run_options(flags);
-    const vektor::Dataset ds = vektor::load_vkd(opt.data_path);
+    const vektor::Dataset ds = vektor::load_dataset(opt.data_path);
     if (opt.k == 0 || opt.k > ds.gt_k) {
         throw std::invalid_argument(std::format("--k must be between 1 and {}", ds.gt_k));
     }
@@ -416,6 +425,51 @@ int run(Flags& flags, const std::string& command_line) {
     return 0;
 }
 
+// Estimates the intrinsic dimension of each dataset (TwoNN and Levina-Bickel MLE).
+int twonn(Flags& flags, const std::string& command_line) {
+    const std::vector<std::string> names = flags.get_list("data", "");
+    const std::uint64_t sample = flags.get_count("sample", 2000);
+    const std::uint64_t k = flags.get_count("k", 20);
+    const std::string scope = flags.get("scope", "all");
+    const std::string out_path = flags.get("out", "");
+    const std::string commit = flags.get("commit", "unknown");
+    flags.check_all_used();
+    if (names.empty() || names.front().empty()) {
+        throw std::invalid_argument("missing --data");
+    }
+    if (scope != "all" && scope != "sample") {
+        throw std::invalid_argument("--scope must be all or sample");
+    }
+    std::ofstream csv;
+    if (!out_path.empty()) {
+        csv.open(out_path);
+        if (!csv) {
+            throw std::runtime_error("cannot write " + out_path);
+        }
+        csv << std::format("# {}\n# date: {}\n# commit: {}\n", command_line, utc_now(), commit)
+            << machine_info()
+            << "dataset,dim,n_base,metric,scope,sample,points_used,twonn,mle_k,mle\n";
+    }
+    for (const std::string& name : names) {
+        const auto start = Clock::now();
+        const vektor::Dataset ds = vektor::load_dataset(name);
+        const vektor::IntrinsicDimension est = vektor::estimate_intrinsic_dimension(
+            ds.base, ds.metric, sample, k, 42, scope == "sample");
+        const std::string label = std::filesystem::path(name).stem().string();
+        if (csv.is_open()) {
+            csv << std::format("{},{},{},{},{},{},{},{:.3f},{},{:.3f}\n", label, ds.base.dim,
+                               ds.base.rows(), vektor::to_string(ds.metric), scope, sample,
+                               est.points, est.twonn, k, est.mle)
+                << std::flush;
+        }
+        std::cout << std::format(
+            "{}: dim {}, intrinsic dimension: TwoNN {:.2f}, MLE (k={}) {:.2f} ({} points, "
+            "{:.1f} s)\n",
+            label, ds.base.dim, est.twonn, k, est.mle, est.points, seconds_since(start));
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -436,6 +490,9 @@ int main(int argc, char** argv) {
         }
         if (command == "run") {
             return run(flags, command_line);
+        }
+        if (command == "twonn") {
+            return twonn(flags, command_line);
         }
         std::cerr << "unknown command '" << command << "'\n" << kUsage;
         return 2;

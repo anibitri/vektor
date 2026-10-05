@@ -237,6 +237,56 @@ TEST(Rows, Slice) {
     EXPECT_THROW((void)slice_rows(v, 2, 2), std::invalid_argument);
 }
 
+TEST(Synthetic, ShapeGroundTruthAndRepeatability) {
+    const Dataset a = make_synthetic(4, 16, 500, 20, 9);
+    EXPECT_EQ(a.base.dim, 16U);
+    EXPECT_EQ(a.base.rows(), 500U);
+    EXPECT_EQ(a.queries.rows(), 20U);
+    EXPECT_EQ(a.metric, Metric::L2);
+    EXPECT_EQ(a.gt_k, 100U);
+    const Dataset b = make_synthetic(4, 16, 500, 20, 9);
+    EXPECT_EQ(a.base.data, b.base.data);
+    // Spot-check the ground truth with an index.
+    Index index(16, Metric::L2);
+    for (std::size_t i = 0; i < a.base.rows(); ++i) {
+        index.add(a.base.row(i));
+    }
+    EXPECT_EQ(index.search_exact(a.queries.row(3), 1)[0].row, a.truth(3)[0]);
+    EXPECT_THROW((void)make_synthetic(17, 16, 10, 1, 1), std::invalid_argument);
+    EXPECT_THROW((void)load_dataset("synthetic-x"), std::invalid_argument);
+}
+
+// On data with a known intrinsic dimension, both estimates should land close to it.
+TEST(IntrinsicDimension, FindsKnownDimension) {
+    for (const std::uint32_t r : {2U, 6U}) {
+        const Dataset ds = make_synthetic(r, 24, 4000, 1, 5);
+        const IntrinsicDimension est =
+            estimate_intrinsic_dimension(ds.base, Metric::L2, 1000, 20, 1);
+        EXPECT_NEAR(est.twonn, r, 0.15 * r) << "r = " << r;
+        EXPECT_NEAR(est.mle, r, 0.15 * r) << "r = " << r;
+        EXPECT_EQ(est.points, 1000U);
+    }
+}
+
+// The paper's protocol: neighbours only among the sampled points.
+TEST(IntrinsicDimension, WithinSample) {
+    const Dataset ds = make_synthetic(5, 24, 6000, 1, 8);
+    const IntrinsicDimension est =
+        estimate_intrinsic_dimension(ds.base, Metric::L2, 1500, 20, 1, /*within_sample=*/true);
+    EXPECT_NEAR(est.twonn, 5.0, 0.75);
+    EXPECT_NEAR(est.mle, 5.0, 0.75);
+    EXPECT_EQ(est.points, 1500U);
+}
+
+TEST(IntrinsicDimension, SkipsDuplicates) {
+    Dataset ds = make_synthetic(3, 8, 1000, 1, 2);
+    const Vectors copy = slice_rows(ds.base, 0, 1000);
+    ds.base.data.insert(ds.base.data.end(), copy.data.begin(),
+                        copy.data.end());  // every point twice
+    EXPECT_THROW((void)estimate_intrinsic_dimension(ds.base, Metric::L2, 200, 5, 1),
+                 std::runtime_error);
+}
+
 TEST(Recall, CountsTrueNeighboursInTopK) {
     const std::vector<std::uint32_t> truth = {4, 7, 1, 9};
     const std::vector<Result> found = {

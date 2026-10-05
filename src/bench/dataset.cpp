@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cmath>
 #include <fstream>
+#include <numbers>
 #include <numeric>
 #include <random>
 #include <sstream>
@@ -34,6 +36,18 @@ std::uint32_t read_u32(std::ifstream& in) {
     std::uint32_t value = 0;
     read_raw(in, std::span<std::uint32_t>(&value, 1));
     return value;
+}
+
+// Random numbers made from the raw generator output only, so every standard
+// library gives the same values (the std:: distributions do not).
+double uniform_open01(std::mt19937_64& rng) {
+    return (static_cast<double>(rng() >> 11U) + 0.5) * 0x1.0p-53;  // (0, 1)
+}
+
+double gaussian(std::mt19937_64& rng) {  // Box-Muller
+    const double u = uniform_open01(rng);
+    const double v = uniform_open01(rng);
+    return std::sqrt(-2.0 * std::log(u)) * std::cos(2.0 * std::numbers::pi * v);
 }
 
 // Fisher-Yates shuffle of 0..n-1.
@@ -281,6 +295,119 @@ Dataset load_vkd(const std::filesystem::path& path) {
         throw file_error(path, "ground truth points past the last base vector");
     }
     return ds;
+}
+
+Dataset make_synthetic(std::uint32_t intrinsic_dim, std::uint32_t dim, std::size_t n_base,
+                       std::size_t n_queries, std::uint64_t seed) {
+    if (intrinsic_dim == 0 || intrinsic_dim > dim) {
+        throw std::invalid_argument("intrinsic dimension must be from 1 to dim");
+    }
+    constexpr double kNoise = 0.001;  // per coordinate; each coordinate's spread is about 1
+    std::mt19937_64 rng(seed);
+    // The fixed random matrix: entries N(0, 1/r), so a coordinate's variance is
+    // about 1 whatever r is.
+    std::vector<double> matrix(std::size_t{dim} * intrinsic_dim);
+    for (double& x : matrix) {
+        x = gaussian(rng) / std::sqrt(static_cast<double>(intrinsic_dim));
+    }
+    const auto generate = [&](std::size_t n) {
+        Vectors v{.dim = dim, .data = std::vector<float>(n * dim)};
+        std::vector<double> z(intrinsic_dim);
+        for (std::size_t row = 0; row < n; ++row) {
+            for (double& x : z) {
+                x = gaussian(rng);
+            }
+            for (std::size_t j = 0; j < dim; ++j) {
+                double sum = 0.0;
+                for (std::size_t k = 0; k < intrinsic_dim; ++k) {
+                    sum += matrix[(j * intrinsic_dim) + k] * z[k];
+                }
+                v.data[(row * dim) + j] = static_cast<float>(sum + (kNoise * gaussian(rng)));
+            }
+        }
+        return v;
+    };
+    Vectors base = generate(n_base);
+    Vectors queries = generate(n_queries);
+    return make_dataset(std::move(base), std::move(queries), Metric::L2, 100);
+}
+
+Dataset load_dataset(const std::string& name) {
+    const std::string prefix = "synthetic-";
+    if (name.starts_with(prefix)) {
+        std::uint32_t r = 0;
+        const char* const end = name.data() + name.size();
+        const auto [p, err] = std::from_chars(name.data() + prefix.size(), end, r);
+        if (err != std::errc() || p != end) {
+            throw std::invalid_argument("expected synthetic-<intrinsic dimension>, got " + name);
+        }
+        return make_synthetic(r, 128, 100'000, 1'000, 1);
+    }
+    return load_vkd(name);
+}
+
+IntrinsicDimension estimate_intrinsic_dimension(const Vectors& vectors, Metric metric,
+                                                std::size_t sample, std::size_t k,
+                                                std::uint64_t seed, bool within_sample) {
+    if (k < 2 || vectors.rows() < k + 1) {
+        throw std::invalid_argument("need k >= 2 and more than k points");
+    }
+    std::vector<std::uint32_t> points = shuffled_indices(vectors.rows(), seed);
+    points.resize(std::min(sample, points.size()));
+    if (within_sample) {
+        // Keep only the sampled points; every one of them is then a sample point.
+        Vectors subset{.dim = vectors.dim, .data = {}};
+        subset.data.reserve(points.size() * vectors.dim);
+        for (const std::uint32_t i : points) {
+            const auto row = vectors.row(i);
+            subset.data.insert(subset.data.end(), row.begin(), row.end());
+        }
+        return estimate_intrinsic_dimension(subset, metric, subset.rows(), k, seed, false);
+    }
+    const std::vector<float> rows = prepared_rows(vectors, metric);
+
+    std::vector<double> mu;
+    double mle_sum = 0.0;
+    std::vector<double> t;  // distances to the k nearest neighbours, closest first
+    for (const std::uint32_t i : points) {
+        const std::span<const float> point(rows.data() + (std::size_t{i} * vectors.dim),
+                                           vectors.dim);
+        t.clear();
+        // The k + 1 closest include the point itself, at distance 0.
+        for (const Result& hit : brute_force(rows, vectors.dim, metric, point, k + 1)) {
+            if (hit.row != i && t.size() < k) {
+                // Plain Euclidean distance: L2 distances are stored squared, and for
+                // unit vectors |a - b|^2 = 2 * (1 - cos).
+                const double d = metric == Metric::L2 ? hit.distance : 2.0 * hit.distance;
+                t.push_back(std::sqrt(std::max(d, 0.0)));
+            }
+        }
+        if (t.size() < k || t[0] <= 0.0) {
+            continue;  // an exact duplicate: the ratios are undefined
+        }
+        mu.push_back(t[1] / t[0]);
+        double log_sum = 0.0;
+        for (std::size_t j = 0; j + 1 < k; ++j) {
+            log_sum += std::log(t[k - 1] / t[j]);
+        }
+        mle_sum += static_cast<double>(k - 1) / log_sum;
+    }
+    if (mu.size() < 10) {
+        throw std::runtime_error("too few points without duplicates to estimate");
+    }
+
+    std::ranges::sort(mu);
+    const auto n = static_cast<double>(mu.size());
+    const auto used = static_cast<std::size_t>(0.9 * n);
+    double xy = 0.0;
+    double xx = 0.0;
+    for (std::size_t i = 0; i < used; ++i) {
+        const double x = std::log(mu[i]);
+        const double y = -std::log(1.0 - (static_cast<double>(i + 1) / n));
+        xy += x * y;
+        xx += x * x;
+    }
+    return {.twonn = xy / xx, .mle = mle_sum / n, .points = mu.size()};
 }
 
 double recall_at_k(std::span<const Result> found, std::span<const std::uint32_t> truth,

@@ -64,6 +64,45 @@ Dataset make_dataset(Vectors base, Vectors queries, Metric metric, std::uint32_t
 void save_vkd(const Dataset& ds, const std::filesystem::path& path);
 Dataset load_vkd(const std::filesystem::path& path);
 
+// Synthetic data with a chosen intrinsic dimension r: points z from an
+// r-dimensional standard normal distribution, mapped into dim dimensions by
+// one fixed random matrix, plus a little noise. Ground truth: top 100, L2.
+Dataset make_synthetic(std::uint32_t intrinsic_dim, std::uint32_t dim, std::size_t n_base,
+                       std::size_t n_queries, std::uint64_t seed);
+
+// Opens a dataset by name. "synthetic-<r>" is generated in memory (128
+// dimensions, 100,000 base vectors, 1,000 queries, seed 1); anything else is
+// the path of a .vkd file.
+Dataset load_dataset(const std::string& name);
+
+// Two estimates of intrinsic dimension from the nearest neighbours of a random
+// sample of points (exact, by brute force, among all the vectors):
+//
+// TwoNN (Facco et al., 2017, "Estimating the intrinsic dimension of datasets by
+// a minimal neighborhood information"): mu = (distance to the 2nd nearest
+// neighbour) / (distance to the 1st). If the data is locally d-dimensional,
+// P(mu <= x) = 1 - x^-d; d is fitted by a line through the origin of
+// -log(1 - F(mu)) against log(mu), leaving out the largest 10% of mu.
+//
+// MLE (Levina & Bickel, 2004, "Maximum likelihood estimation of intrinsic
+// dimension") with k neighbours: per point, (k - 1) / sum over j < k of
+// log(T_k / T_j), where T_j is the distance to the j-th neighbour; averaged over
+// the points. It looks at a wider neighbourhood than TwoNN's two neighbours.
+//
+// Points with an exact duplicate (a neighbour at distance 0) are skipped.
+//
+// With within_sample, neighbours are searched only among the sampled points (as
+// in the TwoNN paper and scikit-dimension): fewer points, so farther neighbours,
+// so the estimate describes the data at a coarser scale.
+struct IntrinsicDimension {
+    double twonn = 0;
+    double mle = 0;
+    std::size_t points = 0;  // sample points without duplicates
+};
+IntrinsicDimension estimate_intrinsic_dimension(const Vectors& vectors, Metric metric,
+                                                std::size_t sample, std::size_t k,
+                                                std::uint64_t seed, bool within_sample = false);
+
 // Share of the true top k (the first k of truth) that appear in the first k of found.
 double recall_at_k(std::span<const Result> found, std::span<const std::uint32_t> truth,
                    std::size_t k);
