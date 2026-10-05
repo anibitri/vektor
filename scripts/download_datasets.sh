@@ -21,8 +21,9 @@ fetch() {
 }
 
 # SIFT1M (TEXMEX corpus, http://corpus-texmex.irisa.fr/): 168 MB download,
-# about 690 MB of disk at peak while unpacking. We keep the first 100,000 base
-# vectors and the first 1,000 queries.
+# about 690 MB of disk at peak while unpacking. We keep a random sample (seed
+# 42) of 100,000 base vectors and 1,000 queries. Not the first rows: the file
+# keeps similar descriptors (probably from the same image) next to each other.
 if [[ ! -f data/sift-100k.vkd ]]; then
     echo "== SIFT"
     fetch ftp://ftp.irisa.fr/local/texmex/corpus/sift.tar.gz "$tmp/sift.tar.gz" \
@@ -30,7 +31,7 @@ if [[ ! -f data/sift-100k.vkd ]]; then
     tar -xzf "$tmp/sift.tar.gz" -C "$tmp" sift/sift_base.fvecs sift/sift_query.fvecs
     rm "$tmp/sift.tar.gz"
     "$bench" convert --base "$tmp/sift/sift_base.fvecs" --queries "$tmp/sift/sift_query.fvecs" \
-        --n-base 100000 --n-queries 1000 --metric l2 --out data/sift-100k.vkd
+        --n-base 100000 --n-queries 1000 --sample-seed 42 --metric l2 --out data/sift-100k.vkd
     rm -rf "$tmp/sift"
 fi
 
