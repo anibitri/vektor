@@ -7,29 +7,33 @@ closest stored vectors, either exactly (brute force) or approximately with HNSW,
 algorithm implemented here from scratch. The plan is to benchmark it on standard datasets, serve
 it over a REST API, and use it to power a small RAG (retrieval-augmented generation) app.
 
-**Status: work in progress.** Done so far: exact search, HNSW, benchmarks on SIFT-100k, saving
-and loading the index, the REST API, the RAG endpoints (with Ollama) and the Docker image. Next:
-more datasets and the intrinsic-dimension experiment, the RAG evaluation, and the UI.
+**Status: work in progress.** Done so far: exact search, HNSW, saving and loading, the REST API,
+the RAG endpoints (with Ollama), the Docker image, and benchmarks on SIFT, GloVe, Fashion-MNIST
+and synthetic data, including the intrinsic-dimension experiment. Next: the RAG evaluation and
+the UI.
 
 ## Results so far
 
-On SIFT-100k (100,000 vectors, 128 dimensions), HNSW with `M = 16` finds **96.7% of the true 10
-nearest neighbours at 15,972 queries per second, 17.8× faster than exact search** (896
+On SIFT-100k (100,000 vectors, 128 dimensions), HNSW with `M = 16` finds **96.6% of the true 10
+nearest neighbours at 15,086 queries per second, 16.6× faster than exact search** (907
 queries/s).
 The index takes 697 bytes per vector: 512 for the vector and 185 for the graph.
 
 ![Recall vs queries per second](docs/figures/recall_vs_qps.png)
 
+**The intrinsic-dimension findings of my
+[ANN paper](https://github.com/anibitri/ANN_methods) reproduce on Vektor's own HNSW.** Measured
+the paper's way, Vektor estimates SIFT's intrinsic dimension at 19.3 (paper: 19.4). With 128
+coordinates fixed, speed at recall 0.95 drops about tenfold from intrinsic dimension 8 to 32
+(paper: about tenfold from 5 to 30). And the number of coordinates does not predict difficulty:
+Fashion-MNIST, with 784 coordinates but an intrinsic dimension of about 14, is the fastest real
+dataset at recall 0.95 and 0.99.
+
+![Queries per second against estimated intrinsic dimension](docs/figures/intrinsic_dimension.png)
+
 Measured on an Apple M2 (8 GB RAM, macOS 26.6.2, Apple clang 21), one thread, mean of 3 runs.
 Method, more charts and discussion: [docs/benchmarks.md](docs/benchmarks.md). How the HNSW code
 maps to the paper: [docs/hnsw.md](docs/hnsw.md).
-
-## Things to change
-
-A temporary checklist of things only you can do. Delete this section when it's done.
-
-- [x] Create the GitHub repo `anibitri/vektor` and push. (Done on 2026-10-03 with your
-      approval; CI passes.)
 
 ## Build and test
 
@@ -60,9 +64,22 @@ Docker build that checks the image size and that the server starts.
 `make datasets` downloads each dataset, converts it to a `.vkd` file in `data/`, and then deletes
 the download. `data/` is git-ignored.
 
-| Dataset   | Base vectors                 | Queries     | Dim | Metric | `.vkd` size |
-| --------- | ---------------------------- | ----------- | --- | ------ | ----------- |
-| SIFT-100k | first 100,000 of SIFT1M      | first 1,000 | 128 | L2     | 52.1 MB     |
+| Dataset | Source | Base vectors | Queries | Dim | Metric | `.vkd` size |
+| --- | --- | --- | --- | --- | --- | --- |
+| SIFT-100k | [TEXMEX SIFT1M](http://corpus-texmex.irisa.fr/) | random 100,000 of 1,000,000 | random 1,000 of 10,000 | 128 | L2 | 52.1 MB |
+| GloVe-100k | [glove-wiki-gigaword-100](https://github.com/RaRe-Technologies/gensim-data) (word vectors) | random 100,000 of 400,000 | 1,000 other words | 100 | cosine | 40.8 MB |
+| Fashion-MNIST-30k | [Fashion-MNIST](https://github.com/zalandoresearch/fashion-mnist) (28 × 28 images) | random 30,000 training images | random 1,000 test images | 784 | L2 | 97.6 MB |
+| synthetic-r | generated in memory, seed 1 (not stored) | 100,000 | 1,000 | 128 | L2 | none |
+
+Every sample is random, with seed 42: SIFT1M stores similar vectors next to each other, so its
+first rows are not a fair sample (see [docs/benchmarks.md](docs/benchmarks.md#lessons-on-measuring-intrinsic-dimension)).
+Every download is checked against a pinned SHA-256 hash. The three files take 191 MB; the
+downloads are deleted after conversion (peak disk use is about 700 MB, while SIFT is unpacked).
+
+**Synthetic data** has a chosen intrinsic dimension r (4, 8, 16, 32 or 64): points from an
+r-dimensional normal distribution, mapped into 128 dimensions by one fixed random matrix, plus a
+little noise. Everything except r stays the same, which isolates the effect of intrinsic
+dimension. It is generated each run from a seed, so it takes no disk space.
 
 A `.vkd` file holds the base vectors, the query vectors, and the true 100 nearest neighbours of
 each query. These are found once by brute force when the file is made, so benchmarks never have
@@ -73,10 +90,13 @@ to recompute them. The layout, all little-endian:
 [float32 base vectors][float32 query vectors][u32 true neighbours, gt_k per query]
 ```
 
-To measure exact search and HNSW on a dataset (run `build/vektor-bench` to see all options):
+To measure exact search and HNSW on a dataset, or estimate intrinsic dimensions (run
+`build/vektor-bench` to see all options):
 
 ```bash
 build/vektor-bench run --data data/sift-100k.vkd --M 8,16,32 --ef-search 10,40,160
+build/vektor-bench run --data synthetic-16
+build/vektor-bench twonn --data data/glove-100k.vkd,synthetic-8
 ```
 
 ## REST API
@@ -148,8 +168,9 @@ files and Ollama reached on the host. Add server flags with
 `make up SERVER_ARGS="--llm-model qwen2.5:1.5b"`.
 
 The image is built in `gcc:14` and runs on `distroless/base-nossl-debian13` (no shell or package
-manager, non-root user), with libstdc++ linked into the binary. It is 39.4 MB (measured on arm64),
-under the 100 MB target. Base images are pinned by digest.
+manager, non-root user), with libstdc++ linked into the binary. `docker images` reports 39.4 MB
+(arm64); its unpacked file system is 29.6 MB (`docker export`), well under the 100 MB target. CI
+checks the unpacked size. Base images are pinned by digest.
 
 ## How it works
 
