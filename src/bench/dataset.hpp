@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <span>
+#include <string>
 #include <vector>
 
 #include "core/distance.hpp"
@@ -39,6 +40,21 @@ struct Dataset {
 // Reads up to max_rows vectors from a .fvecs file (the TEXMEX format used by
 // SIFT: each vector is an int32 length followed by that many float32 values).
 Vectors read_fvecs(const std::filesystem::path& path, std::size_t max_rows);
+
+// Reads up to max_rows vectors from a word2vec text file (how gensim-data ships
+// GloVe): a header line "<rows> <dim>", then per line a word and dim numbers.
+Vectors read_word2vec(const std::filesystem::path& path, std::size_t max_rows);
+
+// Reads up to max_rows images from an IDX file (the MNIST and Fashion-MNIST
+// format: a big-endian header, then one byte per pixel). One image, one vector.
+Vectors read_idx(const std::filesystem::path& path, std::size_t max_rows);
+
+// Shuffles the rows in place with a seeded shuffle that gives the same order
+// with every standard library (std::shuffle does not).
+void shuffle_rows(Vectors& v, std::uint64_t seed);
+
+// A copy of rows [first, first + n).
+Vectors slice_rows(const Vectors& v, std::size_t first, std::size_t n);
 
 // Builds a dataset and finds each query's gt_k true neighbours by brute force.
 Dataset make_dataset(Vectors base, Vectors queries, Metric metric, std::uint32_t gt_k);

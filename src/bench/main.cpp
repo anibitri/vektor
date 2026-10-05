@@ -41,10 +41,14 @@ namespace {
 using Clock = std::chrono::steady_clock;
 
 constexpr const char* kUsage = R"(usage:
-  vektor-bench convert --base FILE.fvecs --queries FILE.fvecs --metric l2|cosine --out FILE.vkd
-                       [--n-base N] [--n-queries N] [--gt-k 100]
-      Takes the first N vectors of each file, finds the true top gt-k neighbours
-      of every query by brute force, and writes one .vkd file.
+  vektor-bench convert --base FILE --metric l2|cosine --out FILE.vkd [--queries FILE]
+                       [--format fvecs|word2vec|idx] [--n-base N] [--n-queries N]
+                       [--sample-seed S] [--gt-k 100]
+      Takes the first N vectors of each file (or, with --sample-seed S > 0, a
+      random sample of each file), finds the true top gt-k neighbours of every
+      query by brute force, and writes one .vkd file. Without --queries, the
+      queries are other rows of the base file (then --n-base and --n-queries
+      are required).
 
   vektor-bench run --data FILE.vkd [--out FILE.csv] [--runs 1] [--k 10]
                    [--M 16] [--ef-construction 200] [--ef-search 10,20,40,80,160,320]
@@ -77,23 +81,62 @@ double seconds_since(Clock::time_point start) {
 
 using vektor::Flags;
 
+vektor::Vectors read_vectors(const std::string& path, const std::string& format,
+                             std::uint64_t max_rows) {
+    if (format == "fvecs") {
+        return vektor::read_fvecs(path, max_rows);
+    }
+    if (format == "word2vec") {
+        return vektor::read_word2vec(path, max_rows);
+    }
+    if (format == "idx") {
+        return vektor::read_idx(path, max_rows);
+    }
+    throw std::invalid_argument("--format must be fvecs, word2vec or idx");
+}
+
 int convert(Flags& flags) {
     const std::string base_path = flags.get("base");
-    const std::string queries_path = flags.get("queries");
+    const std::string queries_path = flags.get("queries", "");
     const std::string out_path = flags.get("out");
+    const std::string format = flags.get("format", "fvecs");
     const vektor::Metric metric = vektor::parse_metric(flags.get("metric"));
     const auto all = std::numeric_limits<std::uint64_t>::max();
     const std::uint64_t n_base = flags.get_count("n-base", all);
     const std::uint64_t n_queries = flags.get_count("n-queries", all);
+    const std::uint64_t sample_seed = flags.get_count("sample-seed", 0);  // 0: no sampling
     const std::uint64_t gt_k = flags.get_count("gt-k", 100);
     flags.check_all_used();
     if (gt_k == 0 || gt_k > std::numeric_limits<std::uint32_t>::max()) {
         throw std::invalid_argument("--gt-k is out of range");
     }
+    const bool held_out = queries_path.empty();
+    if (held_out && (n_base == all || n_queries == all)) {
+        throw std::invalid_argument("without --queries, give --n-base and --n-queries");
+    }
 
     const auto start = Clock::now();
-    vektor::Vectors base = vektor::read_fvecs(base_path, n_base);
-    vektor::Vectors queries = vektor::read_fvecs(queries_path, n_queries);
+    // With sampling, read every row first; otherwise only the rows needed.
+    std::uint64_t to_read = held_out ? n_base + n_queries : n_base;
+    if (sample_seed != 0) {
+        to_read = all;
+    }
+    vektor::Vectors base = read_vectors(base_path, format, to_read);
+    if (sample_seed != 0) {
+        vektor::shuffle_rows(base, sample_seed);
+    }
+    vektor::Vectors queries;
+    if (held_out) {
+        queries = vektor::slice_rows(base, n_base, n_queries);
+    } else if (sample_seed != 0) {  // a random sample of the query file too
+        queries = read_vectors(queries_path, format, all);
+        vektor::shuffle_rows(queries, sample_seed + 1);
+        queries =
+            vektor::slice_rows(queries, 0, std::min<std::uint64_t>(n_queries, queries.rows()));
+    } else {
+        queries = read_vectors(queries_path, format, n_queries);
+    }
+    base = vektor::slice_rows(base, 0, std::min<std::uint64_t>(n_base, base.rows()));
     const vektor::Dataset ds = vektor::make_dataset(std::move(base), std::move(queries), metric,
                                                     static_cast<std::uint32_t>(gt_k));
     vektor::save_vkd(ds, out_path);
@@ -387,11 +430,11 @@ int main(int argc, char** argv) {
         if (command == "convert") {
             return convert(flags);
         }
+        std::string command_line = "vektor-bench";
+        for (const char* arg : args.subspan(1)) {
+            command_line += std::string(" ") + arg;
+        }
         if (command == "run") {
-            std::string command_line = "vektor-bench";
-            for (const char* arg : args.subspan(1)) {
-                command_line += std::string(" ") + arg;
-            }
             return run(flags, command_line);
         }
         std::cerr << "unknown command '" << command << "'\n" << kUsage;

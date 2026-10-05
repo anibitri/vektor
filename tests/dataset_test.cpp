@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -155,6 +157,84 @@ TEST_F(VkdCorruption, GroundTruthOutOfRange) {
     const auto last = static_cast<std::streamoff>(std::filesystem::file_size(path_)) - 4;
     poke(last, 20);  // there are only 20 base rows: 0..19
     EXPECT_THROW((void)load_vkd(path_), std::runtime_error);
+}
+
+TEST(Word2vec, ReadsWordsAndNumbers) {
+    const auto path = temp_file("vectors.txt");
+    std::ofstream(path) << "3 2\nthe 0.5 -1.25\nof 2e-1 3\nand 4 5\n";
+    const Vectors all = read_word2vec(path, 100);
+    EXPECT_EQ(all.dim, 2U);
+    EXPECT_EQ(all.data, (std::vector<float>{0.5F, -1.25F, 0.2F, 3, 4, 5}));
+    EXPECT_EQ(read_word2vec(path, 2).rows(), 2U);
+}
+
+TEST(Word2vec, RejectsBadFiles) {
+    const auto header = temp_file("bad_header.txt");
+    std::ofstream(header) << "three 2\nthe 1 2\n";
+    EXPECT_THROW((void)read_word2vec(header, 10), std::runtime_error);
+    const auto number = temp_file("bad_number.txt");
+    std::ofstream(number) << "1 2\nthe 1 x\n";
+    EXPECT_THROW((void)read_word2vec(number, 10), std::runtime_error);
+    const auto short_line = temp_file("short_line.txt");
+    std::ofstream(short_line) << "1 3\nthe 1 2\n";
+    EXPECT_THROW((void)read_word2vec(short_line, 10), std::runtime_error);
+}
+
+// An IDX file of n images of rows x cols bytes, pixel values 0, 1, 2, ...
+void write_idx(const std::filesystem::path& path, std::uint32_t magic, std::uint32_t n,
+               std::uint32_t rows, std::uint32_t cols) {
+    std::ofstream out(path, std::ios::binary);
+    for (const std::uint32_t v : {magic, n, rows, cols}) {
+        const std::array<char, 4> big_endian = {static_cast<char>(v >> 24U),
+                                                static_cast<char>(v >> 16U),
+                                                static_cast<char>(v >> 8U), static_cast<char>(v)};
+        out.write(big_endian.data(), 4);
+    }
+    for (std::uint32_t i = 0; i < n * rows * cols; ++i) {
+        out.put(static_cast<char>(i));
+    }
+}
+
+TEST(Idx, ReadsImagesAsVectors) {
+    const auto path = temp_file("images.idx");
+    write_idx(path, 0x803, 3, 2, 2);
+    const Vectors all = read_idx(path, 100);
+    EXPECT_EQ(all.dim, 4U);
+    ASSERT_EQ(all.rows(), 3U);
+    EXPECT_EQ(all.row(2)[3], 11.0F);
+    EXPECT_EQ(read_idx(path, 2).rows(), 2U);
+}
+
+TEST(Idx, RejectsBadFiles) {
+    const auto labels = temp_file("labels.idx");
+    write_idx(labels, 0x801, 3, 2, 2);  // a label file, not images
+    EXPECT_THROW((void)read_idx(labels, 10), std::runtime_error);
+    const auto cut = temp_file("cut.idx");
+    write_idx(cut, 0x803, 3, 2, 2);
+    std::filesystem::resize_file(cut, std::filesystem::file_size(cut) - 1);
+    EXPECT_THROW((void)read_idx(cut, 10), std::runtime_error);
+}
+
+TEST(Rows, ShuffleIsAPermutationAndRepeatable) {
+    std::mt19937_64 rng(3);
+    const Vectors original = random_vectors(rng, 3, 50);
+    Vectors a = original;
+    Vectors b = original;
+    shuffle_rows(a, 7);
+    shuffle_rows(b, 7);
+    EXPECT_EQ(a.data, b.data);
+    EXPECT_NE(a.data, original.data);
+    auto sorted_a = a.data;
+    auto sorted_original = original.data;
+    std::ranges::sort(sorted_a);
+    std::ranges::sort(sorted_original);
+    EXPECT_EQ(sorted_a, sorted_original);
+}
+
+TEST(Rows, Slice) {
+    const Vectors v{.dim = 2, .data = {0, 1, 2, 3, 4, 5}};
+    EXPECT_EQ(slice_rows(v, 1, 2).data, (std::vector<float>{2, 3, 4, 5}));
+    EXPECT_THROW((void)slice_rows(v, 2, 2), std::invalid_argument);
 }
 
 TEST(Recall, CountsTrueNeighboursInTopK) {

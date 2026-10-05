@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <fstream>
+#include <numeric>
+#include <random>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -30,6 +34,33 @@ std::uint32_t read_u32(std::ifstream& in) {
     std::uint32_t value = 0;
     read_raw(in, std::span<std::uint32_t>(&value, 1));
     return value;
+}
+
+// Fisher-Yates shuffle of 0..n-1.
+std::vector<std::uint32_t> shuffled_indices(std::size_t n, std::uint64_t seed) {
+    std::vector<std::uint32_t> order(n);
+    std::iota(order.begin(), order.end(), 0U);
+    std::mt19937_64 rng(seed);
+    for (std::size_t i = n; i > 1; --i) {
+        std::swap(order[i - 1], order[rng() % i]);
+    }
+    return order;
+}
+
+// A checked copy of all rows, scaled to length 1 for cosine, ready for brute_force().
+std::vector<float> prepared_rows(const Vectors& v, Metric metric) {
+    std::vector<float> rows;
+    rows.reserve(v.data.size());
+    for (std::size_t i = 0; i < v.rows(); ++i) {
+        const std::vector<float> row = prepare_vector(v.row(i), v.dim, metric);
+        rows.insert(rows.end(), row.begin(), row.end());
+    }
+    return rows;
+}
+
+std::uint32_t big_endian_u32(std::span<const unsigned char> b) {
+    return (std::uint32_t{b[0]} << 24U) | (std::uint32_t{b[1]} << 16U) |
+           (std::uint32_t{b[2]} << 8U) | std::uint32_t{b[3]};
 }
 
 }  // namespace
@@ -70,6 +101,89 @@ Vectors read_fvecs(const std::filesystem::path& path, std::size_t max_rows) {
     return out;
 }
 
+Vectors read_word2vec(const std::filesystem::path& path, std::size_t max_rows) {
+    std::ifstream in(path);
+    if (!in) {
+        throw file_error(path, "cannot open");
+    }
+    std::string line;
+    std::size_t total = 0;
+    std::uint32_t dim = 0;
+    if (!std::getline(in, line) || !(std::istringstream(line) >> total >> dim) || dim == 0 ||
+        dim > kMaxDim) {
+        throw file_error(path, "expected a header line '<rows> <dim>'");
+    }
+    Vectors out{.dim = dim, .data = {}};
+    out.data.reserve(std::min(total, max_rows) * dim);
+    for (std::size_t row = 0; row < max_rows && std::getline(in, line); ++row) {
+        const char* p = line.data();
+        const char* const end = p + line.size();
+        p = std::find(p, end, ' ');  // skip the word
+        for (std::uint32_t i = 0; i < dim; ++i) {
+            while (p < end && *p == ' ') {
+                ++p;
+            }
+            float value = 0;
+            const auto [next, err] = std::from_chars(p, end, value);
+            if (err != std::errc()) {
+                throw file_error(path, "bad number on line " + std::to_string(row + 2));
+            }
+            out.data.push_back(value);
+            p = next;
+        }
+    }
+    if (out.data.empty()) {
+        throw file_error(path, "no vectors found");
+    }
+    return out;
+}
+
+Vectors read_idx(const std::filesystem::path& path, std::size_t max_rows) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        throw file_error(path, "cannot open");
+    }
+    std::array<unsigned char, 16> header{};
+    read_raw(in, std::span<unsigned char>(header));
+    const std::span<const unsigned char> h(header);
+    if (!in || big_endian_u32(h.first(4)) != 0x00000803U) {
+        throw file_error(path, "not an IDX file of 8-bit images");
+    }
+    const std::uint32_t n = big_endian_u32(h.subspan(4, 4));
+    const std::uint64_t dim =
+        std::uint64_t{big_endian_u32(h.subspan(8, 4))} * big_endian_u32(h.subspan(12, 4));
+    if (dim == 0 || dim > kMaxDim) {
+        throw file_error(path, "bad image size");
+    }
+    const std::size_t count = std::min<std::size_t>(n, max_rows);
+    std::vector<unsigned char> pixels(count * dim);
+    read_raw(in, std::span<unsigned char>(pixels));
+    if (!in || count == 0) {
+        throw file_error(path, "file is cut short");
+    }
+    return {.dim = static_cast<std::uint32_t>(dim), .data = {pixels.begin(), pixels.end()}};
+}
+
+void shuffle_rows(Vectors& v, std::uint64_t seed) {
+    const std::vector<std::uint32_t> order = shuffled_indices(v.rows(), seed);
+    std::vector<float> data;
+    data.reserve(v.data.size());
+    for (const std::uint32_t row : order) {
+        const auto r = v.row(row);
+        data.insert(data.end(), r.begin(), r.end());
+    }
+    v.data = std::move(data);
+}
+
+Vectors slice_rows(const Vectors& v, std::size_t first, std::size_t n) {
+    if (first + n > v.rows()) {
+        throw std::invalid_argument("not enough vectors: asked for " + std::to_string(first + n) +
+                                    ", have " + std::to_string(v.rows()));
+    }
+    const auto begin = v.data.begin() + static_cast<std::ptrdiff_t>(first * v.dim);
+    return {.dim = v.dim, .data = {begin, begin + static_cast<std::ptrdiff_t>(n * v.dim)}};
+}
+
 Dataset make_dataset(Vectors base, Vectors queries, Metric metric, std::uint32_t gt_k) {
     if (base.rows() == 0 || queries.rows() == 0) {
         throw std::invalid_argument("need at least one base vector and one query");
@@ -80,13 +194,7 @@ Dataset make_dataset(Vectors base, Vectors queries, Metric metric, std::uint32_t
     if (gt_k == 0 || gt_k > kMaxGtK) {
         throw std::invalid_argument("gt_k must be between 1 and " + std::to_string(kMaxGtK));
     }
-    // Checked (and for cosine, normalised) copy of the base vectors to search.
-    std::vector<float> rows;
-    rows.reserve(base.data.size());
-    for (std::size_t i = 0; i < base.rows(); ++i) {
-        const std::vector<float> v = prepare_vector(base.row(i), base.dim, metric);
-        rows.insert(rows.end(), v.begin(), v.end());
-    }
+    const std::vector<float> rows = prepared_rows(base, metric);
 
     Dataset ds;
     ds.metric = metric;
