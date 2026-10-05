@@ -7,7 +7,13 @@ SOURCES := $(shell find src tests -name '*.cpp' -o -name '*.hpp')
 # Results record the commit they were measured on; "-modified" means the
 # measured code (src/, CMakeLists.txt) had uncommitted changes.
 COMMIT = $(shell git rev-parse --short HEAD)$(shell test -z "$$(git status --porcelain -- src CMakeLists.txt)" || echo -modified)
-BENCH = build/vektor-bench run --data data/sift-100k.vkd --runs 3 --commit $(COMMIT)
+BENCH = build/vektor-bench run --runs 3 --commit $(COMMIT)
+SIFT = data/sift-100k.vkd
+# Datasets for the intrinsic-dimension experiment, and the wider ef_search sweep they need.
+ID_REAL = glove-100k fashion-mnist-30k
+ID_SYNTHETIC = 4 8 16 32 64
+EF_WIDE = 10,20,40,80,160,320,640,1280
+ID_ALL = $(SIFT),data/glove-100k.vkd,data/fashion-mnist-30k.vkd,synthetic-4,synthetic-8,synthetic-16,synthetic-32,synthetic-64
 
 # Release build tuned for this machine's CPU. CI and Docker build without -march=native.
 build:
@@ -32,12 +38,23 @@ test-tsan:
 datasets: build
 	scripts/download_datasets.sh
 
-# Regenerates every file in results/. Run `make datasets` first.
+# Regenerates every file in results/ (about 20 minutes on an Apple M2).
+# Run `make datasets` first.
 bench: build
 	mkdir -p results
-	$(BENCH) --M 8,16,32 --out results/sift-100k.csv
-	$(BENCH) --select simple,heuristic --out results/sift-100k-select.csv
-	$(BENCH) --visited tags,hash --out results/sift-100k-visited.csv
+	$(BENCH) --data $(SIFT) --M 8,16,32 --out results/sift-100k.csv
+	$(BENCH) --data $(SIFT) --select simple,heuristic --out results/sift-100k-select.csv
+	$(BENCH) --data $(SIFT) --visited tags,hash --out results/sift-100k-visited.csv
+	for d in $(ID_REAL); do \
+		$(BENCH) --data data/$$d.vkd --ef-search $(EF_WIDE) --out results/$$d.csv || exit 1; done
+	for r in $(ID_SYNTHETIC); do \
+		$(BENCH) --data synthetic-$$r --ef-search $(EF_WIDE) --out results/synthetic-$$r.csv || exit 1; done
+# Intrinsic dimension two ways: as in the ANN_methods paper (5,000 random points,
+# neighbours only among them), and with neighbours among all vectors (finest scale).
+	build/vektor-bench twonn --data $(ID_ALL) --scope sample --sample 5000 --commit $(COMMIT) \
+		--out results/intrinsic-dimension.csv
+	build/vektor-bench twonn --data $(ID_ALL) --scope all --sample 2000 --commit $(COMMIT) \
+		--out results/intrinsic-dimension-all.csv
 
 # Draws the charts in docs/figures/ from results/, using a local Python venv.
 plots: .venv

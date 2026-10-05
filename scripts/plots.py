@@ -6,6 +6,7 @@ in the CSV; error bars show the lowest and highest run (for both recall and spee
 """
 
 import csv
+import math
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean
@@ -21,6 +22,8 @@ FIGURES = Path("docs/figures")
 
 # Colours: the first three slots of a colour-blind-checked categorical palette.
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a"]
+# An ordered (light to dark) blue ramp for the synthetic datasets, smallest r first.
+RAMP = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
 SURFACE = "#fcfcfb"
 TEXT = "#0b0b0b"
 MUTED = "#52514e"
@@ -214,6 +217,124 @@ def chart_memory():
     save(fig, "memory_vs_m.png")
 
 
+REAL = [("sift-100k", "SIFT-100k", "s"), ("glove-100k", "GloVe-100k", "^"),
+        ("fashion-mnist-30k", "Fashion-MNIST-30k", "D")]
+SYNTHETIC = [4, 8, 16, 32, 64]
+# Where each point's label goes in the intrinsic-dimension chart, so labels do not collide.
+# An offset can also be a dict {estimator: offset} if one label needs a different
+# place in each column.
+LABEL_OFFSET = {"sift-100k": (8, 6), "glove-100k": (8, 5), "fashion-mnist-30k": (-8, 6),
+                "synthetic-4": (8, -3), "synthetic-8": (8, -3), "synthetic-16": (-8, -12),
+                "synthetic-32": (-8, -12), "synthetic-64": (-8, 6)}
+
+
+def m16_hnsw(name):
+    """HNSW rows with M = 16 (the default) from results/<name>.csv."""
+    return [r for r in read(f"{name}.csv") if r["algo"] == "hnsw" and r["M"] == "16"]
+
+
+def qps_at_recall(points, target):
+    """Queries/s at a target recall, interpolated between ef_search settings
+    (log of queries/s, straight line in recall). Returns (qps, is_lower_bound);
+    is_lower_bound is True when even the smallest ef_search beats the target.
+    Returns (None, False) if the target is never reached."""
+    if points[0][1] >= target:
+        return points[0][2], True
+    for a, b in zip(points, points[1:]):
+        if a[1] < target <= b[1]:
+            t = (target - a[1]) / (b[1] - a[1])
+            return math.exp(math.log(a[2]) + t * (math.log(b[2]) - math.log(a[2]))), False
+    return None, False
+
+
+def chart_datasets():
+    fig, (left, right) = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
+    for (name, label, marker), color in zip(REAL, SERIES):
+        points = curve(m16_hnsw(name))
+        left.plot([p[1] for p in points], [p[2] for p in points], color=color, linewidth=2,
+                  marker=marker, markersize=5, label=label)
+    for r, color in zip(SYNTHETIC, RAMP):
+        points = curve(m16_hnsw(f"synthetic-{r}"))
+        right.plot([p[1] for p in points], [p[2] for p in points], color=color, linewidth=2,
+                   marker="o", markersize=5, label=f"r = {r}")
+    for ax, title in ((left, "Real datasets"), (right, "Synthetic, 128 dimensions, intrinsic r")):
+        ax.set_yscale("log")
+        log_axis(ax.yaxis)
+        ax.set_xlabel("recall@10")
+        ax.set_title(title, fontsize=10)
+        ax.legend(loc="lower left", fontsize=8)
+    left.set_ylabel("queries per second (log scale)")
+    fig.suptitle(f"HNSW (M = 16) on every dataset\n{machine('glove-100k.csv')}", fontsize=10)
+    save(fig, "recall_vs_qps_datasets.png")
+
+
+def chart_intrinsic_dimension(targets=(0.9, 0.99)):
+    """Queries/s at fixed recall against estimated intrinsic dimension: one row
+    per recall target, one column per estimator. Hollow markers are lower
+    bounds (the smallest ef_search already beats the target)."""
+    id_rows = read("intrinsic-dimension.csv")
+    estimates = {r["dataset"]: r for r in id_rows}
+    k = id_rows[0]["mle_k"]
+    datasets = REAL + [(f"synthetic-{r}", f"r = {r}", "o") for r in SYNTHETIC]
+    speed = {}  # (name, target) -> (queries/s or None, is lower bound)
+    for name, _, _ in datasets:
+        points = curve(m16_hnsw(name))
+        for target in targets:
+            speed[(name, target)] = qps_at_recall(points, target)
+
+    print(f"| dataset | TwoNN | MLE (k={k}) | "
+          + " | ".join(f"queries/s at recall {t}" for t in targets) + " |")
+    for name, _, _ in datasets:
+        cells = []
+        for target in targets:
+            qps, bound = speed[(name, target)]
+            cells.append("not reached" if qps is None else f"{'>= ' if bound else ''}{qps:,.0f}")
+        est = estimates[name]
+        print(f"| {name} | {float(est['twonn']):.1f} | {float(est['mle']):.1f} | "
+              + " | ".join(cells) + " |")
+
+    fig, axes = plt.subplots(len(targets), 2, figsize=(10, 3.9 * len(targets)), sharey="row")
+    sample = id_rows[0]["sample"]
+    estimators = (("twonn", f"TwoNN, {int(sample):,}-point sample (as in the paper)"),
+                  ("mle", f"Levina-Bickel MLE, {k} neighbours, same sample"))
+    for row_axes, target in zip(axes, targets):
+        for ax, (column, title) in zip(row_axes, estimators):
+            synth = [(name, label) for name, label, _ in datasets if name.startswith("synthetic")]
+            xs = [float(estimates[name][column]) for name, _ in synth]
+            ys = [speed[(name, target)][0] for name, _ in synth]
+            ax.plot(xs, ys, color=GRID, linewidth=2, zorder=1)
+            for (name, label), x, y, color in zip(synth, xs, ys, RAMP):
+                bound = speed[(name, target)][1]
+                ax.scatter(x, y, s=50, facecolor=SURFACE if bound else color, edgecolor=color,
+                           linewidth=2, zorder=2)
+                dx, dy = LABEL_OFFSET[name]
+                ax.annotate(("at least " if bound else "") + label, (x, y),
+                            textcoords="offset points", xytext=(dx, dy),
+                            ha="left" if dx > 0 else "right", fontsize=8, color=MUTED)
+            for name, label, marker in REAL:
+                qps, bound = speed[(name, target)]
+                if qps is None:
+                    continue
+                x = float(estimates[name][column])
+                ax.scatter(x, qps, s=60, marker=marker, facecolor=SURFACE if bound else TEXT,
+                           edgecolor=TEXT, linewidth=1.5, zorder=3)
+                offset = LABEL_OFFSET[name]
+                dx, dy = offset[column] if isinstance(offset, dict) else offset
+                ax.annotate(("at least " if bound else "") + label, (x, qps),
+                            textcoords="offset points", xytext=(dx, dy),
+                            ha="left" if dx > 0 else "right", fontsize=8, color=TEXT)
+            ax.set_yscale("log")
+            log_axis(ax.yaxis)
+            ax.set_xlim(left=0)
+            ax.set_title(title, fontsize=10)
+            ax.set_xlabel("estimated intrinsic dimension")
+        row_axes[0].set_ylabel(f"queries/s at recall@10 = {target}")
+    fig.suptitle("Search speed against intrinsic dimension (HNSW, M = 16). Synthetic data in "
+                 "blue, real datasets in black;\nhollow markers are lower bounds. "
+                 f"{machine('glove-100k.csv')}", fontsize=10)
+    save(fig, "intrinsic_dimension.png")
+
+
 def save(fig, name):
     FIGURES.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
@@ -227,3 +348,5 @@ if __name__ == "__main__":
     chart_select()
     chart_visited()
     chart_memory()
+    chart_datasets()
+    chart_intrinsic_dimension()
