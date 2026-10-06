@@ -1,4 +1,7 @@
-# Only CMakeLists.txt and src/ are needed to build the image.
+# Only what the image build needs: the server sources and the UI sources.
 *
 !CMakeLists.txt
 !src/
+!ui/
+ui/node_modules/
+ui/dist/

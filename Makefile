@@ -85,8 +85,8 @@ rag-eval: build
 ui:
 	cd ui && npm ci --no-fund && npm audit && npm run build
 
-# Builds the server's Docker image and runs it on http://localhost:8080 (Ctrl-C
-# stops it). Index files go in data/. Ollama runs natively on this machine.
+# Builds the Docker image (server and UI) and runs it on http://localhost:8080
+# (Ctrl-C stops it). Index files go in data/. Ollama runs natively on this machine.
 # Extra server flags: make up SERVER_ARGS="--llm-model qwen2.5:1.5b"
 up:
 	mkdir -p data
