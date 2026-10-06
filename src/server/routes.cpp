@@ -159,6 +159,9 @@ std::size_t Api::rag_size() const {
 
 void Api::register_routes(httplib::Server& server) {
     server.set_payload_max_length(config_.max_body_bytes);
+    if (!config_.ui_dir.empty() && !server.set_mount_point("/", config_.ui_dir.string())) {
+        throw std::invalid_argument("UI folder not found: " + config_.ui_dir.string());
+    }
     server.Get("/health", [](const httplib::Request&, httplib::Response& res) {
         reply(res, 200, {{"status", "ok"}});
     });
@@ -286,7 +289,13 @@ json Api::search(const json& body) const {
     return {{"results", results}, {"took_ms", took_ms}, {"exact", exact}};
 }
 
-json Api::stats() const { return {{"index", index_stats(vectors_)}, {"rag", index_stats(rag_)}}; }
+json Api::stats() const {
+    return {{"index", index_stats(vectors_)},
+            {"rag", index_stats(rag_)},
+            {"embed_model", config_.embed_model},
+            // null in low-space mode, when /rag/ask is turned off
+            {"llm_model", config_.llm_model.empty() ? json(nullptr) : json(config_.llm_model)}};
+}
 
 json Api::save() const {
     std::shared_lock lock(vectors_.mutex);

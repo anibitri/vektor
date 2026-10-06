@@ -20,8 +20,8 @@ namespace {
 constexpr const char* kUsage =
     R"(usage: vektor-server [--host 127.0.0.1] [--port 8080] [--data-dir data]
                      [--ollama http://localhost:11434] [--embed-model all-minilm]
-                     [--llm-model MODEL]
-  Serves the REST API. Index files are kept in --data-dir (index.vkt, rag.vkt).
+                     [--llm-model MODEL] [--ui DIR]
+  Serves the REST API, and with --ui the built web UI (ui/dist) at /. Index files are kept in --data-dir (index.vkt, rag.vkt).
   Without --llm-model, /rag/ask is turned off (low-space mode).
 )";
 
@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
         config.ollama_url = flags.get("ollama", config.ollama_url);
         config.embed_model = flags.get("embed-model", config.embed_model);
         config.llm_model = flags.get("llm-model", "");
+        config.ui_dir = flags.get("ui", "");
         flags.check_all_used();
         if (port == 0 || port > 65535) {
             throw std::invalid_argument("--port must be from 1 to 65535");

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <memory>
 #include <random>
 #include <string>
@@ -263,6 +264,26 @@ TEST_F(ServerTest, NeedsAnIndexFirst) {
     EXPECT_EQ(stats.status, 200);
     EXPECT_TRUE(stats.body["index"].is_null());
     EXPECT_TRUE(stats.body["rag"].is_null());
+    EXPECT_EQ(stats.body["embed_model"], "all-minilm");
+    EXPECT_EQ(stats.body["llm_model"], "fake-llm");
+}
+
+TEST_F(ServerTest, ServesTheUi) {
+    const auto ui = data_dir_ / "ui";
+    std::filesystem::create_directories(ui);
+    std::ofstream(ui / "index.html") << "<h1>Vektor UI</h1>";
+    ServerConfig c = config();
+    c.ui_dir = ui;
+    start(c);
+    httplib::Client client(server_->url());
+    const auto page = client.Get("/");
+    ASSERT_TRUE(page);
+    EXPECT_EQ(page->status, 200);
+    EXPECT_EQ(page->body, "<h1>Vektor UI</h1>");
+    EXPECT_EQ(get("/health").body["status"], "ok");  // the API still answers next to the UI
+
+    c.ui_dir = data_dir_ / "missing";
+    EXPECT_THROW(start(c), std::invalid_argument);
 }
 
 TEST_F(ServerTest, RejectsHugeBodies) {
@@ -422,6 +443,7 @@ TEST_F(ServerTest, AskIsOffInLowSpaceMode) {
     start(c);
     ASSERT_EQ(post("/rag/ingest", three_documents()).status, 200);
     EXPECT_EQ(post("/rag/search", {{"query", "violin"}}).status, 200);
+    EXPECT_TRUE(get("/stats").body["llm_model"].is_null());
     const Reply r = post("/rag/ask", {{"question", "anything"}});
     EXPECT_EQ(r.status, 503);
     EXPECT_NE(r.body["error"].get<std::string>().find("low-space"), std::string::npos);

@@ -85,6 +85,7 @@ struct ServerConfig {
     std::size_t chunk_words = 300;
     std::size_t overlap_words = 50;
     std::size_t max_body_bytes = std::size_t{64} << 20U;
+    std::filesystem::path ui_dir;  // the built UI (ui/dist) to serve at /; empty: no UI
 };
 
 class Api {
