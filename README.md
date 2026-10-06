@@ -217,7 +217,10 @@ cd ui && npm run dev                      # or: live-reloading dev server, API c
 The UI's packages are handled carefully: exact versions in a lockfile, the whole dependency tree
 resolved as of a date at least 14 days before installing (`npm install --before=...`, so no
 brand-new release is used), no install scripts (`ui/.npmrc`), and CI fails if `npm audit` finds
-any known vulnerability or a registry signature does not match.
+any known vulnerability or a registry signature does not match. The one exception to the 14-day
+rule is `source-map-js` 1.2.2 (a build-time dependency of Vite), which fixes a high-severity
+advisory published after the UI was set up (GHSA-68fv-2mgg-jv7q); its changes from 1.2.1 were read
+line by line before updating.
 
 ## Docker
 
