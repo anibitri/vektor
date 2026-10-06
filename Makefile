@@ -2,7 +2,7 @@
 
 SOURCES := $(shell find src tests -name '*.cpp' -o -name '*.hpp')
 
-.PHONY: build test test-asan test-tsan datasets bench plots rag-ingest rag-eval up format lint clean
+.PHONY: build test test-asan test-tsan datasets bench plots rag-ingest rag-eval ui up format lint clean
 
 # Results record the commit they were measured on; "-modified" means the
 # measured code (src/, CMakeLists.txt) had uncommitted changes.
@@ -80,6 +80,11 @@ rag-eval: build
 	build/vektor-bench rag-eval --server $(SERVER) --questions scripts/rag-questions.json \
 		--commit $(COMMIT) --out results/rag-eval.csv --ask-out results/rag-ask.json
 
+# Builds the web UI into ui/dist (serve it with `build/vektor-server --ui ui/dist`).
+# npm ci installs exactly the locked versions, with install scripts off (ui/.npmrc).
+ui:
+	cd ui && npm ci --no-fund && npm audit && npm run build
+
 # Builds the server's Docker image and runs it on http://localhost:8080 (Ctrl-C
 # stops it). Index files go in data/. Ollama runs natively on this machine.
 # Extra server flags: make up SERVER_ARGS="--llm-model qwen2.5:1.5b"
@@ -96,6 +101,6 @@ format:
 lint: build
 	SDKROOT=$$(xcrun --show-sdk-path 2>/dev/null) clang-tidy -p build --quiet $(filter %.cpp,$(SOURCES))
 
-# Deletes build files, downloaded datasets, index files and the Python venv.
+# Deletes build files, downloaded datasets, index files, the Python venv and the UI's packages.
 clean:
-	rm -rf build build-asan build-tsan data .venv
+	rm -rf build build-asan build-tsan data .venv ui/node_modules ui/dist
