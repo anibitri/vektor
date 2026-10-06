@@ -6,7 +6,7 @@ compiler and compiler flags it was measured with. To reproduce:
 
 ```bash
 make datasets   # download and convert the datasets (once)
-make bench      # about 20 minutes on an Apple M2
+make bench      # about 25 minutes on an Apple M2
 make plots      # redraw the charts in docs/figures/
 ```
 

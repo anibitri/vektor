@@ -1,0 +1,822 @@
+{
+  "about": "# vektor-bench rag-eval --server http://localhost:8080 --questions scripts/rag-questions.json --commit c7f024a --out results/rag-eval.csv --ask-out results/rag-ask.json\n# date: 2026-10-06T13:28:41Z\n# cpu: Apple M2\n# cores: 8 (4 performance)\n# ram: 8.0 GB\n# os: Darwin 25.6.0 arm64 (macOS 26.6.2)\n# compiler: clang 21.0.0 (clang-2100.1.1.101)\n# flags: Release: -O3 -DNDEBUG -fopenmp-simd -march=native\n# commit: c7f024a\n# rag index: 2034 chunks, embedding model all-minilm\n# questions: 40 from scripts/rag-questions.json\n",
+  "answers": [
+    {
+      "answer": "The benchmark that covers more than 2,000 combinations of tasks, architectures, optimizers, and language models for studying multi-step language model pipelines is LangProBe.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q01",
+      "keyword_match": true,
+      "question": "Which benchmark covers more than 2,000 combinations of tasks, architectures, optimizers and language models for studying multi-step language model pipelines?",
+      "sources": [
+        "2502.20315#0",
+        "2503.01763#0",
+        "2504.04713#0",
+        "2505.15874#0",
+        "2502.13595#0"
+      ],
+      "timings": {
+        "embed_ms": 8.897458,
+        "llm_ms": 4819.271292,
+        "search_ms": 0.112958
+      }
+    },
+    {
+      "answer": "The offline reinforcement learning framework for recommender systems that uses model uncertainty and decaying penalizers to keep the variety of states high is Reallocated Reward for Recommender Systems (R3S).",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q02",
+      "keyword_match": true,
+      "question": "What offline reinforcement learning framework for recommender systems uses model uncertainty and decaying penalizers to keep the variety of states high?",
+      "sources": [
+        "2506.22112#0",
+        "2505.07257#0",
+        "2501.13816#0",
+        "2502.02327#0",
+        "2501.17409#0"
+      ],
+      "timings": {
+        "embed_ms": 103.151,
+        "llm_ms": 3014.34025,
+        "search_ms": 1.943334
+      }
+    },
+    {
+      "answer": "Combining sparse and dense retrieval improved Recall@20 by 12.5% compared to the best single retrieval model.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q03",
+      "keyword_match": true,
+      "question": "In a multi-agent framework for attributed question answering, how much did combining sparse and dense retrieval improve Recall@20?",
+      "sources": [
+        "2506.16988#0",
+        "2502.14796#0",
+        "2501.15228#0",
+        "2503.13275#0",
+        "2504.05312#0"
+      ],
+      "timings": {
+        "embed_ms": 27.103292,
+        "llm_ms": 2664.359791,
+        "search_ms": 0.178
+      }
+    },
+    {
+      "answer": "RecCocktail",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q04",
+      "keyword_match": true,
+      "question": "Which LLM recommendation framework merges a general 'base spirit' LoRA module with a domain-specific 'ingredient' LoRA module?",
+      "sources": [
+        "2502.08271#0",
+        "2501.02178#0",
+        "2504.20859#0",
+        "2506.07449#0",
+        "2501.13344#0"
+      ],
+      "timings": {
+        "embed_ms": 13.757834,
+        "llm_ms": 2602.238083,
+        "search_ms": 0.195834
+      }
+    },
+    {
+      "answer": "The approach that removes ambiguity from user prompts by asking a structured series of clarification questions before producing a final solution is called the Progressive Cutting-Search Approach. This method is proposed in the source [2] and involves systematically narrowing down ambiguities through a series of clarification questions and alternative solution proposals. Once every uncertainty is resolved, a final, precise solution is generated.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": true,
+      "id": "q05",
+      "keyword_match": true,
+      "question": "What approach removes ambiguity from user prompts by asking a structured series of clarification questions before producing a final solution?",
+      "sources": [
+        "2504.12113#0",
+        "2505.02952#0",
+        "2502.08557#0",
+        "2505.14099#0",
+        "2505.07155#0"
+      ],
+      "timings": {
+        "embed_ms": 13.166542,
+        "llm_ms": 3249.991666,
+        "search_ms": 0.401042
+      }
+    },
+    {
+      "answer": "HyperZero",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q06",
+      "keyword_match": true,
+      "question": "Which auto-tuning system for recommendation value models aims to find a usable solution within two to three days?",
+      "sources": [
+        "2501.18126#0",
+        "2505.20771#0",
+        "2502.08309#0",
+        "2506.23170#0",
+        "2504.06633#0"
+      ],
+      "timings": {
+        "embed_ms": 10.188,
+        "llm_ms": 2301.086708,
+        "search_ms": 0.184708
+      }
+    },
+    {
+      "answer": "The LLM-based retriever is trained with bidirectional reinforcement learning (RL) to augment both the queries and the corpus documents.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q07",
+      "keyword_match": false,
+      "question": "Which LLM-based retriever is trained with bidirectional reinforcement learning to augment both the queries and the corpus documents?",
+      "sources": [
+        "2506.18670#0",
+        "2502.17057#0",
+        "2503.00223#0",
+        "2507.02962#0",
+        "2506.13743#0"
+      ],
+      "timings": {
+        "embed_ms": 17.279958,
+        "llm_ms": 2631.588208,
+        "search_ms": 0.20225
+      }
+    },
+    {
+      "answer": "The procedure that extends CRISP-DM with 'technical understanding' and 'implementation' phases and was applied to fuel efficiency in Danish public transport is DataPro. This model was illustrated in a case study where the project identified key business objectives, translated them into technical requirements, and developed models that provided actionable insights for reducing fuel consumption.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q08",
+      "keyword_match": true,
+      "question": "Which procedure extends CRISP-DM with 'technical understanding' and 'implementation' phases and was applied to fuel efficiency in Danish public transport?",
+      "sources": [
+        "2501.12176#0",
+        "2501.03904#0",
+        "2506.13333#0",
+        "2503.19434#0",
+        "2504.17220#0"
+      ],
+      "timings": {
+        "embed_ms": 25.385458,
+        "llm_ms": 3293.186541,
+        "search_ms": 0.259333
+      }
+    },
+    {
+      "answer": "The e-commerce query rewriting pipeline that combines offline knowledge distillation with online reinforcement learning, using LLMs as simulated human feedback is proposed in the paper \"RL-based Query Rewriting with Distilled LLM for online E-Commerce Systems\". This pipeline is called IterQR and is designed to generate query rewrite with both domain / real-world knowledge.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q09",
+      "keyword_match": true,
+      "question": "Which e-commerce query rewriting pipeline combines offline knowledge distillation with online reinforcement learning, using LLMs as simulated human feedback?",
+      "sources": [
+        "2501.18056#0",
+        "2504.05309#0",
+        "2506.06913#0",
+        "2501.14826#0",
+        "2503.09516#0"
+      ],
+      "timings": {
+        "embed_ms": 25.923333,
+        "llm_ms": 3571.930334,
+        "search_ms": 3.581042
+      }
+    },
+    {
+      "answer": "Key research challenges identified for evidence retrieval when fact-checking scientific claims against full papers rather than abstracts include:\n\n1. Evidence-driven retrieval that addresses semantic limitations and topic imbalance.\n2. Time-aware evidence retrieval with citation tracking to mitigate outdated information.\n3. Structured document parsing to leverage long-range context.\n4. Handling complex scientific expressions, including tables, figures, and domain-specific terminology.\n5. Assessing the credibility of scientific literature.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q10",
+      "keyword_match": true,
+      "question": "Which research challenges are identified for evidence retrieval when fact-checking scientific claims against full papers rather than abstracts?",
+      "sources": [
+        "2506.20844#0",
+        "2504.08752#0",
+        "2507.02975#0",
+        "2504.14175#0",
+        "2505.17762#0"
+      ],
+      "timings": {
+        "embed_ms": 30.862167,
+        "llm_ms": 3747.42475,
+        "search_ms": 3.370917
+      }
+    },
+    {
+      "answer": "The theoretical model that connects in-context-learning recommendation with large language models to gradient descent dynamics is the LLM-ICL Recommendation Equivalent Gradient Descent model (LRGD).",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q11",
+      "keyword_match": true,
+      "question": "Which theoretical model connects in-context-learning recommendation with large language models to gradient descent dynamics?",
+      "sources": [
+        "2504.04386#0",
+        "2502.13909#0",
+        "2502.13783#0",
+        "2505.10212#0",
+        "2504.08208#0"
+      ],
+      "timings": {
+        "embed_ms": 27.738333,
+        "llm_ms": 2974.430833,
+        "search_ms": 2.956292
+      }
+    },
+    {
+      "answer": "The dataset built to study product bias in LLM investment recommendations contains 567,000 samples across five asset classes: stocks, mutual funds, cryptocurrencies, savings, and portfolios.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q12",
+      "keyword_match": true,
+      "question": "How many samples and asset classes are in the dataset built to study product bias in LLM investment recommendations?",
+      "sources": [
+        "2503.08750#0",
+        "2505.10212#0",
+        "2506.00074#0",
+        "2501.00782#0",
+        "2504.05325#0"
+      ],
+      "timings": {
+        "embed_ms": 28.076,
+        "llm_ms": 2783.504542,
+        "search_ms": 4.767333
+      }
+    },
+    {
+      "answer": "The graph neural network that compares evidence graphs with claim graphs reached a detection accuracy of 93.05% on the evaluation set.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q13",
+      "keyword_match": true,
+      "question": "What detection accuracy did a graph neural network that compares evidence graphs with claim graphs reach on out-of-context image-caption misinformation?",
+      "sources": [
+        "2505.18221#0",
+        "2505.23449#0",
+        "2506.12072#0",
+        "2506.22165#0",
+        "2502.16101#0"
+      ],
+      "timings": {
+        "embed_ms": 81.993709,
+        "llm_ms": 2729.373167,
+        "search_ms": 2.48975
+      }
+    },
+    {
+      "answer": "The method that speeds up LLM click-through-rate prediction with graph convolutional networks for retrieval and a multi-head early exit is the QNN-alpha neuron format. Specifically, the QNN-alpha neuron format is proposed as a superior alternative to Hadamard Product (HP) and a Self-Ensemble Loss with dynamic ensemble capability within the same network to enhance computational efficiency and performance.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q14",
+      "keyword_match": true,
+      "question": "Which method speeds up LLM click-through-rate prediction with graph convolutional networks for retrieval and a multi-head early exit?",
+      "sources": [
+        "2501.02173#0",
+        "2505.17999#0",
+        "2503.01001#0",
+        "2505.03543#0",
+        "2504.17699#0"
+      ],
+      "timings": {
+        "embed_ms": 41.00575,
+        "llm_ms": 3585.566959,
+        "search_ms": 0.467459
+      }
+    },
+    {
+      "answer": "20x",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q15",
+      "keyword_match": true,
+      "question": "How much more data-efficient were dialogue state tracking retrievers trained by scoring in-context examples for their combined effect?",
+      "sources": [
+        "2506.00622#0",
+        "2506.00314#0",
+        "2503.00238#0",
+        "2503.09902#0",
+        "2502.10916#0"
+      ],
+      "timings": {
+        "embed_ms": 50.666708,
+        "llm_ms": 2506.316542,
+        "search_ms": 0.453666
+      }
+    },
+    {
+      "answer": "An alignment method that treats LLM generation like a retriever-reranker system achieved 38.9% and 13.7% averaged improvement on AlpacaEval2 and MixEval-Hard, respectively.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q16",
+      "keyword_match": true,
+      "question": "What improvements on AlpacaEval2 and MixEval-Hard did an alignment method that treats LLM generation like a retriever-reranker system achieve?",
+      "sources": [
+        "2502.03699#0",
+        "2506.14412#0",
+        "2504.07439#0",
+        "2505.18710#0",
+        "2504.07109#0"
+      ],
+      "timings": {
+        "embed_ms": 32.235958,
+        "llm_ms": 2822.491084,
+        "search_ms": 2.46
+      }
+    },
+    {
+      "answer": "The four contrastive learning models tested for robustness on medical image-report retrieval when parts of the images are occluded were CLIP, CXR-RePaiR, MedCLIP, and CXR-CLIP.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q17",
+      "keyword_match": true,
+      "question": "Which four contrastive learning models were tested for robustness on medical image-report retrieval when parts of the images are occluded?",
+      "sources": [
+        "2501.09134#0",
+        "2503.04653#0",
+        "2506.13496#0",
+        "2505.19274#0",
+        "2501.01326#0"
+      ],
+      "timings": {
+        "embed_ms": 29.972083,
+        "llm_ms": 2830.872375,
+        "search_ms": 0.624084
+      }
+    },
+    {
+      "answer": "DiffusionCom",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q18",
+      "keyword_match": true,
+      "question": "Which diffusion model treats multimodal knowledge graph completion as gradually generating the joint distribution of (head, relation) pairs and tail entities from noise?",
+      "sources": [
+        "2504.06543#0",
+        "2505.07171#0",
+        "2504.02589#0",
+        "2501.02313#0",
+        "2502.15623#0"
+      ],
+      "timings": {
+        "embed_ms": 25.545417,
+        "llm_ms": 2097.558958,
+        "search_ms": 2.35025
+      }
+    },
+    {
+      "answer": "The hybrid task allocation framework proposed in [2] finds weak and inactive users and serves them with in-context learning by an LLM to make top-k recommendation fairer across user groups.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": true,
+      "id": "q19",
+      "keyword_match": true,
+      "question": "Which framework finds weak and inactive users and serves them with in-context learning by an LLM to make top-k recommendation fairer across user groups?",
+      "sources": [
+        "2501.18117#0",
+        "2501.04762#0",
+        "2502.14662#0",
+        "2503.23040#0",
+        "2502.09319#0"
+      ],
+      "timings": {
+        "embed_ms": 72.419625,
+        "llm_ms": 2751.55125,
+        "search_ms": 2.133083
+      }
+    },
+    {
+      "answer": "The Dual-Flow Generative Ranking Network (DFGR) duplicates a user's behavior sequence into a real flow and a fake flow based on the authenticity of the action information, which is more efficient than Meta's HSTU-based model.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q20",
+      "keyword_match": true,
+      "question": "Which generative ranking network duplicates a user's behaviour sequence into a real flow and a fake flow to be more efficient than Meta's HSTU?",
+      "sources": [
+        "2505.16752#0",
+        "2505.16298#0",
+        "2505.04180#0",
+        "2503.23427#0",
+        "2502.06097#0"
+      ],
+      "timings": {
+        "embed_ms": 47.724417,
+        "llm_ms": 2894.038917,
+        "search_ms": 0.935208
+      }
+    },
+    {
+      "answer": "Based on the information provided in the sources, German information retrieval researchers contributed mainly to CLEF. Specifically, the source [1] states that \"it was shown that productivity follows the assumptions made by Lotka's Law\" and that \"the German IR community, both on the author and institution level, mainly contributed to CLEF.\" This indicates that the German IR community's contributions were primarily to CLEF during the period analyzed.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": true,
+      "id": "q21",
+      "keyword_match": true,
+      "question": "Between 2000 and 2022, did German information retrieval researchers contribute mainly to TREC or to CLEF?",
+      "sources": [
+        "2502.03065#0",
+        "2501.03930#0",
+        "2503.08541#0",
+        "2502.03891#0",
+        "2501.06833#0"
+      ],
+      "timings": {
+        "embed_ms": 10.050125,
+        "llm_ms": 2818.831458,
+        "search_ms": 0.193209
+      }
+    },
+    {
+      "answer": "Wilcoxon plus the Benjamini-Hochberg correction kept Type I errors at the significance level with the best power when multiple information retrieval systems are compared at once.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q22",
+      "keyword_match": true,
+      "question": "When many information retrieval systems are compared at once, which statistical test and correction kept Type I errors at the significance level with the best power?",
+      "sources": [
+        "2501.03930#0",
+        "2502.13465#0",
+        "2506.10301#0",
+        "2503.19092#0",
+        "2503.09899#0"
+      ],
+      "timings": {
+        "embed_ms": 12.8825,
+        "llm_ms": 2763.528375,
+        "search_ms": 0.358583
+      }
+    },
+    {
+      "answer": "The review covers hashtag recommendation methods from frequency-based models to transformers.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q23",
+      "keyword_match": true,
+      "question": "Which review covers hashtag recommendation methods from frequency-based models to transformers?",
+      "sources": [
+        "2503.18669#0",
+        "2502.13481#0",
+        "2501.02178#0",
+        "2505.11198#0",
+        "2502.08309#0"
+      ],
+      "timings": {
+        "embed_ms": 10.28325,
+        "llm_ms": 2563.435167,
+        "search_ms": 0.197792
+      }
+    },
+    {
+      "answer": "The method that denoises the social graph with low-rank SVD and uses mutual distillation to help cold users is called Contrastive Learning Augmented Social Recommendations (CLSRec). This method is proposed in the paper \"Contrastive Learning Augmented Social Recommendations\" by Wan Lin et al.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q24",
+      "keyword_match": true,
+      "question": "Which social recommendation method denoises the social graph with low-rank SVD and uses mutual distillation to help cold users?",
+      "sources": [
+        "2502.15695#0",
+        "2506.02834#0",
+        "2504.10432#0",
+        "2501.11342#0",
+        "2502.11374#0"
+      ],
+      "timings": {
+        "embed_ms": 50.276959,
+        "llm_ms": 3251.813208,
+        "search_ms": 1.210209
+      }
+    },
+    {
+      "answer": "27,441 news articles were found by matching event fingerprints.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q25",
+      "keyword_match": true,
+      "question": "How many news articles about 2020 natural disasters and terrorist attacks were found by matching event fingerprints?",
+      "sources": [
+        "2506.12925#0",
+        "2506.19548#0",
+        "2501.05925#0",
+        "2502.15332#0",
+        "2502.07474#0"
+      ],
+      "timings": {
+        "embed_ms": 11.864125,
+        "llm_ms": 2236.6865,
+        "search_ms": 0.902292
+      }
+    },
+    {
+      "answer": "The RAG framework that allows users to trade accuracy against retrieval cost with one interpretable control parameter, alpha, is introduced in the paper \"Fast or Better? Balancing Accuracy and Cost in Retrieval-Augmented Generation with Flexible User Control.\" This framework leverages two classifiers: one trained to prioritize accuracy and another to prioritize retrieval efficiency. Via an interpretable control parameter α, users can seamlessly navigate between minimal-cost retrieval and high-accuracy retrieval based on their specific requirements.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q26",
+      "keyword_match": true,
+      "question": "Which RAG framework lets users trade accuracy against retrieval cost with one interpretable control parameter, alpha?",
+      "sources": [
+        "2502.12145#0",
+        "2503.08398#0",
+        "2506.06704#0",
+        "2504.20119#0",
+        "2503.23013#0"
+      ],
+      "timings": {
+        "embed_ms": 36.259209,
+        "llm_ms": 3551.032375,
+        "search_ms": 0.289875
+      }
+    },
+    {
+      "answer": "The semantic Bell inequality test using diverse LLM agents produced average CHSH expectation values from 1.2 to 2.8, with several runs producing values (e.g., 2.3-2.4) in significant violation of the classical boundary ($|S|\\leq2$), demonstrating that linguistic interpretation under ambiguity can exhibit non-classical contextuality.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q27",
+      "keyword_match": true,
+      "question": "What CHSH expectation values did a semantic Bell inequality test with LLM agents produce?",
+      "sources": [
+        "2506.10077#0",
+        "2502.15727#0",
+        "2503.01670#0",
+        "2505.07166#0",
+        "2504.15330#0"
+      ],
+      "timings": {
+        "embed_ms": 37.511792,
+        "llm_ms": 3468.00525,
+        "search_ms": 2.466958
+      }
+    },
+    {
+      "answer": "A BERT model trained on gender-neutralized PubMed abstracts reached a 70% inclusive replacement rate, while a model trained on the original text reached only 4%.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q28",
+      "keyword_match": true,
+      "question": "What inclusive replacement rate did a BERT model trained on gender-neutralised PubMed abstracts reach, compared with a model trained on the original text?",
+      "sources": [
+        "2501.06365#0",
+        "2506.22372#0",
+        "2506.23191#0",
+        "2504.01448#0",
+        "2506.02589#0"
+      ],
+      "timings": {
+        "embed_ms": 88.005916,
+        "llm_ms": 2422.463334,
+        "search_ms": 1.633625
+      }
+    },
+    {
+      "answer": "Feature selection and serialization improved LLM extraction of patient data from electronic health record tables by up to 26.79%.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q29",
+      "keyword_match": true,
+      "question": "By how much did feature selection and serialization improve LLM extraction of patient data from electronic health record tables?",
+      "sources": [
+        "2501.09384#0",
+        "2501.16672#0",
+        "2506.06340#0",
+        "2501.14105#0",
+        "2507.01049#0"
+      ],
+      "timings": {
+        "embed_ms": 15.096334,
+        "llm_ms": 2133.374333,
+        "search_ms": 0.190125
+      }
+    },
+    {
+      "answer": "A process-reward method for agentic RAG needs significantly fewer training instances compared to Search-R1. Specifically, the process-reward method requires only 5k training instances, whereas Search-R1 requires 90k training instances.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q30",
+      "keyword_match": true,
+      "question": "How many training instances does a process-reward method for agentic RAG need compared with Search-R1?",
+      "sources": [
+        "2505.14069#0",
+        "2506.10844#0",
+        "2505.15117#0",
+        "2505.02811#0",
+        "2501.09136#0"
+      ],
+      "timings": {
+        "embed_ms": 13.352166,
+        "llm_ms": 3232.193916,
+        "search_ms": 0.186709
+      }
+    },
+    {
+      "answer": "The sequential recommendation framework that uses GANs for data augmentation and graph contrastive learning on a global item relationship graph is called Global Unsupervised Data-Augmentation (UDA4SR).",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q31",
+      "keyword_match": true,
+      "question": "Which sequential recommendation framework uses GANs for data augmentation and graph contrastive learning on a global item relationship graph?",
+      "sources": [
+        "2504.08740#0",
+        "2506.05625#0",
+        "2503.20232#0",
+        "2505.19020#0",
+        "2504.13614#0"
+      ],
+      "timings": {
+        "embed_ms": 31.545167,
+        "llm_ms": 2546.4085,
+        "search_ms": 2.625875
+      }
+    },
+    {
+      "answer": "Zep scored 94.8% on the Deep Memory Retrieval (DMR) benchmark.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q32",
+      "keyword_match": true,
+      "question": "Which memory layer for AI agents, built on a temporal knowledge graph, scored 94.8% on the Deep Memory Retrieval benchmark?",
+      "sources": [
+        "2501.13956#0",
+        "2506.17001#0",
+        "2504.02670#0",
+        "2506.18959#0",
+        "2504.15965#0"
+      ],
+      "timings": {
+        "embed_ms": 11.021583,
+        "llm_ms": 2542.86175,
+        "search_ms": 0.207959
+      }
+    },
+    {
+      "answer": "Ebay trains relevance models for the keyphrases recommended to advertisers by aligning advertiser keyphrase relevance with search relevance signals. This involves re-conceptualizing advertiser keyphrase relevance as interaction between two dynamical systems: Advertising which produces the keyphrases and Search which acts as a middleman to reach buyers. The study discusses the bias of search relevance systems (middleman bias) and the need to align advertiser keyphrases with search relevance signals. The performance of cross encoders and bi-encoders in modeling this alignment is compared, and it is concluded that using LLM-as-a-judge en-masse as a scalable proxy for seller judgment to train relevance models achieves a better harmony across the three systems provided that they are bound by a meticulous evaluation framework grounded in business metrics.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q33",
+      "keyword_match": true,
+      "question": "How does eBay train relevance models for the keyphrases recommended to advertisers?",
+      "sources": [
+        "2502.00131#0",
+        "2505.04209#0",
+        "2505.19164#0",
+        "2503.09223#0",
+        "2502.15990#0"
+      ],
+      "timings": {
+        "embed_ms": 20.196208,
+        "llm_ms": 4547.398333,
+        "search_ms": 0.287708
+      }
+    },
+    {
+      "answer": "Up to 100x higher query throughput.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q34",
+      "keyword_match": true,
+      "question": "How much higher query throughput did new range retrieval algorithms for graph-based vector indices reach than a standard graph search and FAISS-IVF range search?",
+      "sources": [
+        "2502.13245#0",
+        "2506.23397#0",
+        "2502.05575#0",
+        "2504.14861#0",
+        "2502.20695#0"
+      ],
+      "timings": {
+        "embed_ms": 44.483708,
+        "llm_ms": 2497.364458,
+        "search_ms": 1.312167
+      }
+    },
+    {
+      "answer": "When fine-tuned, the Llama 3.1 model agreed best with human assessors when filling unjudged holes in conversational search test collections.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q35",
+      "keyword_match": true,
+      "question": "Which language model, when fine-tuned, agreed best with human assessors when filling unjudged holes in conversational search test collections?",
+      "sources": [
+        "2503.09899#0",
+        "2503.09902#0",
+        "2506.10301#0",
+        "2503.19193#0",
+        "2504.19076#0"
+      ],
+      "timings": {
+        "embed_ms": 32.323625,
+        "llm_ms": 2833.714833,
+        "search_ms": 0.281083
+      }
+    },
+    {
+      "answer": "KET-RAG builds a knowledge graph skeleton from key chunks plus a text-keyword bipartite graph to cut indexing cost.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q36",
+      "keyword_match": true,
+      "question": "Which Graph-RAG indexing framework builds a knowledge graph skeleton from key chunks plus a text-keyword bipartite graph to cut indexing cost?",
+      "sources": [
+        "2502.09304#0",
+        "2504.09877#0",
+        "2503.19314#0",
+        "2504.09823#0",
+        "2503.00309#0"
+      ],
+      "timings": {
+        "embed_ms": 12.1985,
+        "llm_ms": 2893.309459,
+        "search_ms": 0.195
+      }
+    },
+    {
+      "answer": "Two-sided platforms such as video streaming should avoid myopic-greedy recommendation policies because these policies do not generally take into account the participation dynamics of viewers and providers. Despite the importance of such \"population effects\" on long-term platform health, recommendation policies do not generally consider these dynamics. This paper studies the dynamics and policy design on two-sided platforms under the population effects for the first time. Our findings warn against the use of the standard \"myopic-greedy\" policy and highlight the importance of provider-side considerations, such as effectively distributing exposure among provider groups, to improve social welfare via population growth. Our algorithm optimizes long-term social welfare by taking the population effects into account, and demonstrates its effectiveness in synthetic and real-data experiments.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q37",
+      "keyword_match": true,
+      "question": "Why should two-sided platforms such as video streaming avoid myopic-greedy recommendation policies?",
+      "sources": [
+        "2502.01792#0",
+        "2506.04525#0",
+        "2504.07105#0",
+        "2503.03606#0",
+        "2504.01863#1"
+      ],
+      "timings": {
+        "embed_ms": 19.847542,
+        "llm_ms": 3966.305709,
+        "search_ms": 6.687
+      }
+    },
+    {
+      "answer": "GBSVR, or Granular Ball Support Vector Regression, replaces many data points with granular balls to cut the cost of support vector regression.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q38",
+      "keyword_match": true,
+      "question": "Which regression method replaces many data points with granular balls to cut the cost of support vector regression?",
+      "sources": [
+        "2503.10539#0",
+        "2504.16639#0",
+        "2502.05575#0",
+        "2506.12069#0",
+        "2502.20695#0"
+      ],
+      "timings": {
+        "embed_ms": 20.04775,
+        "llm_ms": 2506.5385,
+        "search_ms": 0.721042
+      }
+    },
+    {
+      "answer": "+0.122% improvements on user active days.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q39",
+      "keyword_match": true,
+      "question": "What gain on user active days did fine-grained time-aware interest modelling achieve in an online A/B test of a music app's recommendations?",
+      "sources": [
+        "2501.15817#0",
+        "2506.16942#0",
+        "2504.06633#0",
+        "2505.11198#0",
+        "2502.05561#0"
+      ],
+      "timings": {
+        "embed_ms": 27.125542,
+        "llm_ms": 2417.727584,
+        "search_ms": 5.891583
+      }
+    },
+    {
+      "answer": "The collection that unifies open-domain document visual question answering datasets for RAG over charts, tables, and slides is OpenDocVQA.",
+      "answering_chunk_in_sources": true,
+      "cites_a_source": false,
+      "id": "q40",
+      "keyword_match": true,
+      "question": "Which collection unifies open-domain document visual question answering datasets for RAG over charts, tables and slides?",
+      "sources": [
+        "2504.09795#0",
+        "2505.17166#0",
+        "2505.10043#0",
+        "2504.20047#0",
+        "2505.11651#0"
+      ],
+      "timings": {
+        "embed_ms": 40.455875,
+        "llm_ms": 2977.134667,
+        "search_ms": 2.890083
+      }
+    }
+  ],
+  "summary": {
+    "answering_chunk_in_sources": 40,
+    "cites_a_source": 3,
+    "keyword_match": 39,
+    "mean_ms": {
+      "embed": 31.448022950000002,
+      "llm": 2951.0312489750004,
+      "search": 1.4698855000000002
+    },
+    "median_ms": {
+      "embed": 27.114417,
+      "llm": 2820.661271,
+      "search": 0.672563
+    },
+    "questions": 40,
+    "says_dont_know": 0
+  }
+}
