@@ -51,8 +51,7 @@ add_library(vektor_core STATIC src/core/index.cpp src/core/hnsw.cpp src/core/io.
 target_include_directories(vektor_core PUBLIC src)
 target_compile_options(vektor_core PRIVATE ${VEKTOR_WARNINGS})
 
-add_executable(vektor-bench src/bench/main.cpp src/bench/dataset.cpp)
-target_link_libraries(vektor-bench PRIVATE vektor_core)
+add_executable(vektor-bench src/bench/main.cpp src/bench/dataset.cpp src/bench/rag_eval.cpp)
 target_compile_options(vektor-bench PRIVATE ${VEKTOR_WARNINGS})
 # The compiler flags, written into every benchmark results file.
 string(TOUPPER "${CMAKE_BUILD_TYPE}" build_type)
@@ -66,6 +65,9 @@ add_library(vektor_api STATIC src/server/routes.cpp src/server/rag.cpp src/serve
 target_include_directories(vektor_api SYSTEM PUBLIC ${httplib_SOURCE_DIR})
 target_link_libraries(vektor_api PUBLIC vektor_core nlohmann_json::nlohmann_json Threads::Threads)
 target_compile_options(vektor_api PRIVATE ${VEKTOR_WARNINGS})
+
+# rag-eval talks to the server over HTTP, so vektor-bench needs the HTTP and JSON libraries too.
+target_link_libraries(vektor-bench PRIVATE vektor_api)
 
 add_executable(vektor-server src/server/main.cpp)
 target_link_libraries(vektor-server PRIVATE vektor_api)

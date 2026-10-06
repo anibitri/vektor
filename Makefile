@@ -2,7 +2,7 @@
 
 SOURCES := $(shell find src tests -name '*.cpp' -o -name '*.hpp')
 
-.PHONY: build test test-asan test-tsan datasets bench plots up format lint clean
+.PHONY: build test test-asan test-tsan datasets bench plots rag-ingest rag-eval up format lint clean
 
 # Results record the commit they were measured on; "-modified" means the
 # measured code (src/, CMakeLists.txt) had uncommitted changes.
@@ -64,6 +64,21 @@ plots: .venv
 	python3 -m venv .venv
 	.venv/bin/pip install -q -r scripts/requirements.txt
 	touch .venv
+
+# RAG: needs a running server with Ollama, e.g. `build/vektor-server --llm-model qwen2.5:1.5b`.
+SERVER = http://localhost:8080
+
+# Fetches the corpus (2,031 arXiv abstracts) once, then ingests it into the server.
+rag-ingest:
+	test -f data/rag-corpus.json || python3 scripts/fetch_corpus.py data/rag-corpus.json
+	curl -sSf -X POST $(SERVER)/rag/ingest -H 'Content-Type: application/json' \
+		--data-binary @data/rag-corpus.json
+	@echo
+
+# Measures retrieval (and asks every question) through the server; writes results/rag-*.
+rag-eval: build
+	build/vektor-bench rag-eval --server $(SERVER) --questions scripts/rag-questions.json \
+		--commit $(COMMIT) --out results/rag-eval.csv --ask-out results/rag-ask.json
 
 # Builds the server's Docker image and runs it on http://localhost:8080 (Ctrl-C
 # stops it). Index files go in data/. Ollama runs natively on this machine.

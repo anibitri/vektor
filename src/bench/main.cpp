@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "bench/dataset.hpp"
+#include "bench/rag_eval.hpp"
 #include "core/flags.hpp"
 #include "core/index.hpp"
 
@@ -55,6 +56,14 @@ constexpr const char* kUsage = R"(usage:
       Estimates intrinsic dimension with TwoNN and the Levina-Bickel MLE (k
       neighbours), from a random sample of points. --scope all: neighbours
       come from all the vectors; sample: only from the sample (coarser scale).
+
+  vektor-bench rag-eval --questions FILE.json [--server http://127.0.0.1:8080]
+                        [--ef-search 10,20,40,80,160] [--out FILE.csv] [--ask-out FILE.json]
+                        [--commit ID]
+      Measures RAG retrieval through a running vektor-server: the rank of the
+      chunk that answers each question, with exact search and with HNSW at each
+      ef_search (recall@1, @5, @10 and MRR). --ask-out: also asks each question
+      with /rag/ask and saves the answers and timings.
 
   NAME is a .vkd file, or synthetic-R: 100,000 + 1,000 points generated in
   memory with intrinsic dimension R in 128 dimensions.
@@ -493,6 +502,10 @@ int main(int argc, char** argv) {
         }
         if (command == "twonn") {
             return twonn(flags, command_line);
+        }
+        if (command == "rag-eval") {
+            return vektor::rag_eval(
+                flags, std::format("# {}\n# date: {}\n", command_line, utc_now()) + machine_info());
         }
         std::cerr << "unknown command '" << command << "'\n" << kUsage;
         return 2;
